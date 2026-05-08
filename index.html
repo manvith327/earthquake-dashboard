@@ -1,0 +1,2078 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Earthquake Monitor</title>
+    <!-- Use Google Fonts (Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Use FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <link rel="stylesheet" href="styles.css?v=2">
+</head>
+
+<body>
+    <!-- Real-Time Earthquake Alert System -->
+    <div id="realtime-alert-box" style="display: none; position: fixed; top: 20px; right: 20px; z-index: 9999; background: rgba(20,0,0,0.9); border: 2px solid #ff4d4f; border-radius: 8px; padding: 15px 25px; box-shadow: 0 0 20px rgba(255,77,79,0.5); align-items: center; gap: 15px; animation: alertPulse 1.5s infinite;">
+        <i class="fas fa-exclamation-triangle" style="color: #ff4d4f; font-size: 24px; animation: iconPulse 1s infinite alternate;"></i>
+        <div style="color: white; font-family: sans-serif; flex: 1;">
+            <div style="color: #ff4d4f; font-weight: bold; font-size: 16px; margin-bottom: 5px;">⚠️ Strong Earthquake Detected</div>
+            <div id="realtime-alert-msg" style="font-size: 14px; color: #ccc;">Magnitude -- at --</div>
+        </div>
+        <button onclick="document.getElementById('realtime-alert-box').style.display='none'" style="background: transparent; border: 1px solid #ff4d4f; color: #ff4d4f; border-radius: 4px; padding: 5px 10px; cursor: pointer; transition: 0.3s;"><i class="fas fa-times"></i> Dismiss</button>
+    </div>
+    <style>
+        @keyframes alertPulse {
+            0% { box-shadow: 0 0 10px rgba(255,77,79,0.3); border-color: #aa1111; }
+            50% { box-shadow: 0 0 30px rgba(255,77,79,0.8); border-color: #ff4d4f; }
+            100% { box-shadow: 0 0 10px rgba(255,77,79,0.3); border-color: #aa1111; }
+        }
+        @keyframes iconPulse {
+            from { transform: scale(1); opacity: 0.8; }
+            to { transform: scale(1.2); opacity: 1; text-shadow: 0 0 10px #ff4d4f; }
+        }
+        @keyframes flashRedBanner {
+            0% { background: #cf1322; box-shadow: 0 4px 15px rgba(207, 19, 34, 0.5); }
+            50% { background: #820014; box-shadow: 0 4px 30px rgba(207, 19, 34, 1); border-bottom: 2px solid #ff4d4f;}
+            100% { background: #cf1322; box-shadow: 0 4px 15px rgba(207, 19, 34, 0.5); }
+        }
+        #realtime-alert-box button:hover { background: rgba(255,77,79,0.2) !important; }
+    </style>
+
+    <!-- Global Loading Overlay -->
+    <div id="loader">Fetching Live Seismic Data...</div>
+
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="fas fa-globe-americas"></i>
+                <span>QuakeDash</span>
+            </div>
+            <nav class="nav-menu" style="overflow-y: auto; overflow-x: hidden; max-height: calc(100vh - 90px);">
+                <a href="#" class="nav-item active" data-page="hub" style="display: flex; align-items: center;">
+                    <i class="fas fa-home"></i>
+                    <span>Disaster Hub</span>
+                    <i class="fas fa-chevron-down submenu-icon" id="hub-chevron" style="margin-left: auto; transition: transform 0.3s ease; font-size: 0.8em; opacity: 0.7;"></i>
+                </a>
+                
+                <div id="hub-submenu" style="display: none; flex-direction: column; padding-left: 10px; border-left: 1px solid rgba(255,255,255,0.05); margin-left: 15px;">
+                    <a href="#" class="nav-item" data-page="monitoring">
+                    <i class="fas fa-satellite-dish"></i>
+                    <span>Live Monitoring</span>
+                </a>
+                <a href="#" class="nav-item" data-page="control">
+                    <i class="fas fa-desktop"></i>
+                    <span>Control Center</span>
+                </a>
+                <a href="#" class="nav-item" data-page="tectonics">
+                    <i class="fas fa-layer-group"></i>
+                    <span>Plate Tectonics</span>
+                </a>
+                <a href="#" class="nav-item" data-page="volcanoes">
+                    <i class="fas fa-mountain"></i>
+                    <span>Volcano Monitor</span>
+                </a>
+                <a href="#" class="nav-item" data-page="tsunami">
+                    <i class="fas fa-water"></i>
+                    <span>Tsunami Estimation</span>
+                </a>
+                <a href="#" class="nav-item" data-page="history">
+                    <i class="fas fa-landmark"></i>
+                    <span>Historical Analysis</span>
+                </a>
+                <a href="#" class="nav-item" data-page="satellite">
+                    <i class="fas fa-satellite"></i>
+                    <span>Satellite Monitor</span>
+                </a>
+                <a href="#" class="nav-item" data-page="analysis">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Scientific Analysis</span>
+                </a>
+                <a href="#" class="nav-item" data-page="analysis">
+                    <i class="fas fa-bullseye"></i>
+                    <span>Data Analysis</span>
+                </a>
+                <a href="#" class="nav-item" data-page="estimation">
+                    <i class="fas fa-wave-square"></i>
+                    <span>Estimation</span>
+                </a>
+                <a href="#" class="nav-item" data-page="heatmap">
+                    <i class="fas fa-fire"></i>
+                    <span>Live Heatmap</span>
+                </a>
+                <a href="#" class="nav-item" data-page="japan">
+                    <i class="fas fa-globe-asia"></i>
+                    <span>Japan Live</span>
+                </a>
+                <a href="#" class="nav-item" data-page="india">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>India Monitor</span>
+                </a>
+                <a href="#" class="nav-item" data-page="ai">
+                    <i class="fas fa-brain"></i>
+                    <span>Regional AI</span>
+                </a>
+                <a href="#" class="nav-item" data-page="globe">
+                    <i class="fas fa-globe"></i>
+                    <span>3D Earth Viewer</span>
+                </a>
+                <a href="#" class="nav-item" data-page="eew">
+                    <i class="fas fa-broadcast-tower"></i>
+                    <span>Early Warning System</span>
+                </a>
+                <a href="#" class="nav-item" data-page="stations">
+                    <i class="fas fa-satellite-dish"></i>
+                    <span>Seismic Stations</span>
+                </a>
+                <a href="#" class="nav-item" data-page="timeline">
+                    <i class="fas fa-history"></i>
+                    <span>Earthquake Timeline</span>
+                </a>
+                <a href="#" class="nav-item" data-page="aiheatmap">
+                    <i class="fas fa-fire-alt"></i>
+                    <span>AI Risk Heatmap</span>
+                </a>
+                <a href="#" class="nav-item" data-page="imageanalysis">
+                    <i class="fas fa-file-image"></i>
+                    <span>Image Analysis</span>
+                </a>
+                <a href="#" class="nav-item" data-page="movement">
+                    <i class="fas fa-arrows-alt"></i>
+                    <span>Plate Movement</span>
+                </a>
+                <a href="#" class="nav-item" data-page="medical">
+                    <i class="fas fa-ambulance" style="color: #ff4d4f;"></i>
+                    <span style="color: #ff4d4f; font-weight: 500;">Emergency Support</span>
+                </a>
+                <a href="#" class="nav-item" data-page="rescue">
+                    <i class="fas fa-life-ring" style="color: #1890ff;"></i>
+                    <span style="color: #1890ff; font-weight: 500;">Rescue Operations</span>
+                </a>
+                <a href="#" class="nav-item" data-page="sos">
+                    <i class="fas fa-satellite-dish" style="color: #ff4d4f;"></i>
+                    <span style="color: #ff4d4f; font-weight: 500;">SOS Help Center</span>
+                </a>
+                <a href="#" class="nav-item" data-page="impact">
+                    <i class="fas fa-microchip" style="color: #1890ff;"></i>
+                    <span style="color: #1890ff; font-weight: 500;">Impact Estimator</span>
+                </a>
+                <a href="#" class="nav-item" data-page="community" style="border-top: 1px solid rgba(255,255,255,0.05); margin-top: 10px; padding-top: 10px;">
+                    <i class="fas fa-hands-helping" style="color: #52c41a;"></i>
+                    <span style="color: #52c41a; font-weight: bold;">Community Support</span>
+                </a>
+                <a href="#" class="nav-item" data-page="russia">
+                    <i class="fas fa-flag" style="color: #f5222d;"></i>
+                    <span style="color: #f5222d; font-weight: bold;">Russia Monitor</span>
+                </a>
+                <a href="#" class="nav-item" data-page="quakebot">
+                    <i class="fas fa-robot" style="color: #722ed1;"></i>
+                    <span style="color: #722ed1; font-weight: bold;">AI QuakeBot</span>
+                </a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="main-wrapper" style="position: relative;">
+            
+            <!-- Global Alert Broadcast Banner -->
+            <div id="global-alert-banner" style="display: none; position: absolute; top: 0; left: 0; right: 0; background: #cf1322; color: white; padding: 15px 30px; z-index: 1000; align-items: center; justify-content: space-between; box-shadow: 0 4px 15px rgba(207, 19, 34, 0.5); animation: flashRedBanner 2s infinite;">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 28px; animation: pulseRed 1s infinite;"></i>
+                    <div>
+                        <h2 style="margin: 0; font-size: 20px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">🚨 Major Earthquake Alert</h2>
+                        <p id="global-alert-text" style="margin: 5px 0 0 0; font-size: 15px;"></p>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <button id="global-alert-view-btn" class="btn-primary" style="background: white; color: #cf1322; border: none; padding: 8px 20px; border-radius: 4px; font-weight: bold; cursor: pointer;">View on Map</button>
+                    <button onclick="document.getElementById('global-alert-banner').style.display='none'" style="background: transparent; border: none; color: white; cursor: pointer; font-size: 20px;"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+
+            <!-- Header -->
+            <header class="header">
+                <h2 id="page-title">Dashboard</h2>
+                <div class="header-right">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Search earthquakes...">
+                    </div>
+                    
+                    <!-- Alert History Bell -->
+                    <div class="alert-bell-container" style="position: relative; margin-right: 15px; cursor: pointer;" onclick="document.getElementById('alert-history-dropdown').style.display = document.getElementById('alert-history-dropdown').style.display === 'none' ? 'block' : 'none'">
+                        <i class="fas fa-bell" style="font-size: 20px; color: #8bb1d4; transition: 0.2s;"></i>
+                        <span id="alert-bell-badge" style="display: none; position: absolute; top: -5px; right: -5px; background: #cf1322; color: white; border-radius: 50%; width: 15px; height: 15px; font-size: 10px; display: flex; justify-content: center; align-items: center; box-shadow: 0 0 5px rgba(255,0,0,0.5);">0</span>
+                        
+                        <div id="alert-history-dropdown" style="display: none; position: absolute; top: 35px; right: -10px; width: 320px; background: #0b1a2a; border: 1px solid #1f3a53; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 1000; overflow: hidden;">
+                            <div style="padding: 15px; border-bottom: 1px solid #1f3a53; background: rgba(0,0,0,0.2); display: flex; justify-content: space-between; align-items: center;">
+                                <h4 style="margin: 0; color: white; font-size: 14px;"><i class="fas fa-history"></i> Alert History (Last 10)</h4>
+                                <span style="color: #8bb1d4; font-size: 12px; cursor: pointer;" onclick="event.stopPropagation(); document.getElementById('alert-history-dropdown').style.display='none'">Close</span>
+                            </div>
+                            <div id="alert-history-list" style="max-height: 350px; overflow-y: auto;">
+                                <div style="padding: 20px; text-align: center; color: #666; font-size: 13px;">No major alerts recorded during this session.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="user-profile">
+                        <img src="https://ui-avatars.com/api/?name=Admin+User&background=177ddc&color=fff" alt="Admin">
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <main class="content" style="overflow-y: auto; overflow-x: hidden; height: calc(100vh - 70px);">
+
+                <!-- Disaster Support Hub Page -->
+                <div id="page-hub" class="page-section active">
+                    
+                    <!-- Top Global Search Bar -->
+                    <div style="background: rgba(0,0,0,0.3); padding: 25px; border-radius: 8px; border: 1px solid #1f3a53; margin-bottom: 25px; text-align: center;">
+                        <h2 style="color: white; margin: 0 0 15px 0; font-size: 28px;"><i class="fas fa-hands-helping" style="color: #1890ff;"></i> Disaster Assistance Hub</h2>
+                        <p style="color: #8bb1d4; font-size: 14px; margin: 0 0 20px 0;">Select a specialized service below, or search globally for immediate assistance.</p>
+                        <div class="search-box" style="width: 70%; margin: 0 auto; display: flex; position: relative;">
+                            <i class="fas fa-search" style="position: absolute; left: 15px; top: 16px; color: #1890ff; font-size: 18px;"></i>
+                            <input type="text" id="hub-global-search" placeholder="Search for hospital, rescue, shelter, food, ambulance, emergency help..." style="width: 100%; padding: 15px 15px 15px 45px; border-radius: 30px; border: 1px solid #1890ff; background: #0b1a2a; color: white; font-size: 16px; box-shadow: 0 0 15px rgba(24,144,255,0.2);">
+                            <button onclick="window.hubGlobalSearch()" style="position: absolute; right: 8px; top: 8px; padding: 10px 25px; border-radius: 20px; background: #1890ff; border: none; color: white; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.2s;">Search</button>
+                        </div>
+                    </div>
+
+                    <!-- Emergency Info Panel -->
+                    <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 25px;">
+                        <div class="stat-card" style="border-left: 4px solid #faad14; background: linear-gradient(145deg, rgba(250,173,20,0.1) 0%, rgba(11,26,42,1) 60%);">
+                            <h3 style="margin: 0; color: #ccc; font-size: 13px; text-transform: uppercase;"><i class="fas fa-globe-americas"></i> Latest Earthquake</h3>
+                            <h2 id="hub-latest-eq" style="color: #faad14; margin: 10px 0 0 0; font-size: 18px; line-height: 1.2;">Scanning...</h2>
+                        </div>
+                        <div class="stat-card" style="border-left: 4px solid #ff4d4f; background: linear-gradient(145deg, rgba(255,77,79,0.1) 0%, rgba(11,26,42,1) 60%);">
+                            <h3 style="margin: 0; color: #ccc; font-size: 13px; text-transform: uppercase;"><i class="fas fa-exclamation-triangle"></i> Current Disaster Alerts</h3>
+                            <h2 id="hub-active-alerts" style="color: #ff4d4f; margin: 10px 0 0 0; font-size: 32px;">0</h2>
+                        </div>
+                        <div class="stat-card" style="border-left: 4px solid #1890ff; background: linear-gradient(145deg, rgba(24,144,255,0.1) 0%, rgba(11,26,42,1) 60%);">
+                            <h3 style="margin: 0; color: #ccc; font-size: 13px; text-transform: uppercase;"><i class="fas fa-satellite-dish"></i> Active SOS Requests</h3>
+                            <h2 id="hub-sos-count" style="color: #1890ff; margin: 10px 0 0 0; font-size: 32px;">0</h2>
+                        </div>
+                    </div>
+
+                    <!-- Quick Emergency Button -->
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <button onclick="document.querySelector('.nav-item[data-page=sos]').click()" class="btn-primary" style="background: #cf1322; border: none; font-size: 20px; font-weight: bold; padding: 20px 50px; border-radius: 50px; box-shadow: 0 0 20px rgba(207, 19, 34, 0.6); animation: pulseRed 2s infinite;"><i class="fas fa-exclamation-circle"></i> Request Help Now</button>
+                    </div>
+
+                    <!-- SECTION 1: Quick Action Buttons -->
+                    <h3 style="color: white; margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px;">SECTION 1: Quick Action Buttons</h3>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px;">
+                        <button onclick="document.querySelector('.nav-item[data-page=monitoring]').click()" style="background: rgba(54, 207, 201, 0.1); border: 2px solid #36cfc9; color: #36cfc9; padding: 30px; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; display: flex; flex-direction: column; align-items: center; gap: 10px;" onmouseover="this.style.background='rgba(54, 207, 201, 0.2)'; this.style.transform='translateY(-3px)'" onmouseout="this.style.background='rgba(54, 207, 201, 0.1)'; this.style.transform='translateY(0)'">
+                            <i class="fas fa-satellite-dish" style="font-size: 36px;"></i> Monitor Disasters
+                        </button>
+                        <button onclick="document.querySelector('.nav-item[data-page=analysis]').click()" style="background: rgba(250, 173, 20, 0.1); border: 2px solid #faad14; color: #faad14; padding: 30px; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; display: flex; flex-direction: column; align-items: center; gap: 10px;" onmouseover="this.style.background='rgba(250, 173, 20, 0.2)'; this.style.transform='translateY(-3px)'" onmouseout="this.style.background='rgba(250, 173, 20, 0.1)'; this.style.transform='translateY(0)'">
+                            <i class="fas fa-bullseye" style="font-size: 36px;"></i> Analyze Earthquake Risk
+                        </button>
+                        <button onclick="document.querySelector('.nav-item[data-page=medical]').click()" style="background: rgba(255, 77, 79, 0.1); border: 2px solid #ff4d4f; color: #ff4d4f; padding: 30px; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; display: flex; flex-direction: column; align-items: center; gap: 10px;" onmouseover="this.style.background='rgba(255, 77, 79, 0.2)'; this.style.transform='translateY(-3px)'" onmouseout="this.style.background='rgba(255, 77, 79, 0.1)'; this.style.transform='translateY(0)'">
+                            <i class="fas fa-ambulance" style="font-size: 36px;"></i> Get Emergency Help
+                        </button>
+                    </div>
+
+                    <!-- SECTION 2: Hub Services Grid -->
+                    <h3 style="color: white; margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px;">SECTION 2: Service Selection Grid</h3>
+                    <div id="hub-dynamic-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;">
+                        
+                        <!-- Earthquake Monitoring -->
+                        <div class="card" style="border: 1px solid #1f3a53; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; text-align: center; padding: 25px 20px; border-top: 3px solid #36cfc9;" onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                            <div style="width: 70px; height: 70px; border-radius: 50%; background: rgba(54, 207, 201, 0.1); color: #36cfc9; display: flex; justify-content: center; align-items: center; font-size: 32px; margin: 0 auto 15px auto;">
+                                <i class="fas fa-satellite-dish"></i>
+                            </div>
+                            <h3 style="color: white; margin: 0 0 10px 0; font-size: 18px;">Earthquake Monitoring</h3>
+                            <p style="color: #8bb1d4; font-size: 13px; margin: 0 0 20px 0; min-height: 40px;">Real-time global seismic activity tracking and mapping.</p>
+                            <button onclick="document.querySelector('.nav-item[data-page=monitoring]').click()" class="btn-primary" style="width: 100%; background: transparent; border: 1px solid #36cfc9; color: #36cfc9; padding: 10px;">Open Module</button>
+                        </div>
+
+                        <!-- Earthquake Data Analysis -->
+                        <div class="card" style="border: 1px solid #1f3a53; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; text-align: center; padding: 25px 20px; border-top: 3px solid #faad14;" onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                            <div style="width: 70px; height: 70px; border-radius: 50%; background: rgba(250, 173, 20, 0.1); color: #faad14; display: flex; justify-content: center; align-items: center; font-size: 32px; margin: 0 auto 15px auto;">
+                                <i class="fas fa-bullseye"></i>
+                            </div>
+                            <h3 style="color: white; margin: 0 0 10px 0; font-size: 18px;">Earthquake Data Analysis</h3>
+                            <p style="color: #8bb1d4; font-size: 13px; margin: 0 0 20px 0; min-height: 40px;">Advanced ML models forecasting high-risk fault zones.</p>
+                            <button onclick="document.querySelector('.nav-item[data-page=analysis]').click()" class="btn-primary" style="width: 100%; background: transparent; border: 1px solid #faad14; color: #faad14; padding: 10px;">Open Module</button>
+                        </div>
+
+                        <!-- Emergency Medical Support -->
+                        <div class="card" style="border: 1px solid #1f3a53; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; text-align: center; padding: 25px 20px; border-top: 3px solid #ff4d4f;" onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                            <div style="width: 70px; height: 70px; border-radius: 50%; background: rgba(255, 77, 79, 0.1); color: #ff4d4f; display: flex; justify-content: center; align-items: center; font-size: 32px; margin: 0 auto 15px auto;">
+                                <i class="fas fa-ambulance"></i>
+                            </div>
+                            <h3 style="color: white; margin: 0 0 10px 0; font-size: 18px;">Emergency Medical Support</h3>
+                            <p style="color: #8bb1d4; font-size: 13px; margin: 0 0 20px 0; min-height: 40px;">Find nearby hospitals and locate medical assistance camps.</p>
+                            <button onclick="document.querySelector('.nav-item[data-page=medical]').click()" class="btn-primary" style="width: 100%; background: transparent; border: 1px solid #ff4d4f; color: #ff4d4f; padding: 10px;">Open Module</button>
+                        </div>
+                        <!-- Rescue Operations -->
+                        <div class="card" style="border: 1px solid #1f3a53; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; text-align: center; padding: 25px 20px; border-top: 3px solid #1890ff;" onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                            <div style="width: 70px; height: 70px; border-radius: 50%; background: rgba(24, 144, 255, 0.1); color: #1890ff; display: flex; justify-content: center; align-items: center; font-size: 32px; margin: 0 auto 15px auto;">
+                                <i class="fas fa-helicopter"></i>
+                            </div>
+                            <h3 style="color: white; margin: 0 0 10px 0; font-size: 18px;">Rescue Operations</h3>
+                            <p style="color: #8bb1d4; font-size: 13px; margin: 0 0 20px 0; min-height: 40px;">Coordinate rescue team logistics and strategic deployments.</p>
+                            <button onclick="document.querySelector('.nav-item[data-page=rescue]').click()" class="btn-primary" style="width: 100%; background: transparent; border: 1px solid #1890ff; color: #1890ff; padding: 10px;">Open Service</button>
+                        </div>
+
+                        <!-- SOS Help Center -->
+                        <div class="card" style="border: 1px solid #1f3a53; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; text-align: center; padding: 25px 20px; border-top: 3px solid #cf1322;" onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                            <div style="width: 70px; height: 70px; border-radius: 50%; background: rgba(207, 19, 34, 0.1); color: #cf1322; display: flex; justify-content: center; align-items: center; font-size: 32px; margin: 0 auto 15px auto;">
+                                <i class="fas fa-satellite-dish"></i>
+                            </div>
+                            <h3 style="color: white; margin: 0 0 10px 0; font-size: 18px;">SOS Help Center</h3>
+                            <p style="color: #8bb1d4; font-size: 13px; margin: 0 0 20px 0; min-height: 40px;">Issue distress signals and request public emergency aid.</p>
+                            <button onclick="document.querySelector('.nav-item[data-page=sos]').click()" class="btn-primary" style="width: 100%; background: transparent; border: 1px solid #cf1322; color: #cf1322; padding: 10px;">Open Service</button>
+                        </div>
+
+                        <!-- Tsunami Alerts -->
+                        <div class="card" style="border: 1px solid #1f3a53; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; text-align: center; padding: 25px 20px; border-top: 3px solid #13c2c2;" onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                            <div style="width: 70px; height: 70px; border-radius: 50%; background: rgba(19, 194, 194, 0.1); color: #13c2c2; display: flex; justify-content: center; align-items: center; font-size: 32px; margin: 0 auto 15px auto;">
+                                <i class="fas fa-water"></i>
+                            </div>
+                            <h3 style="color: white; margin: 0 0 10px 0; font-size: 18px;">Tsunami Alerts</h3>
+                            <p style="color: #8bb1d4; font-size: 13px; margin: 0 0 20px 0; min-height: 40px;">Oceanographic monitoring for tsunami propagation waves.</p>
+                            <button onclick="document.querySelector('.nav-item[data-page=tsunami]').click()" class="btn-primary" style="width: 100%; background: transparent; border: 1px solid #13c2c2; color: #13c2c2; padding: 10px;">Open Module</button>
+                        </div>
+
+                        <!-- Safe Evacuation Routes -->
+                        <div class="card" style="border: 1px solid #1f3a53; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; text-align: center; padding: 25px 20px; border-top: 3px solid #52c41a;" onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                            <div style="width: 70px; height: 70px; border-radius: 50%; background: rgba(82, 196, 26, 0.1); color: #52c41a; display: flex; justify-content: center; align-items: center; font-size: 32px; margin: 0 auto 15px auto;">
+                                <i class="fas fa-route"></i>
+                            </div>
+                            <h3 style="color: white; margin: 0 0 10px 0; font-size: 18px;">Safe Evacuation Routes</h3>
+                            <p style="color: #8bb1d4; font-size: 13px; margin: 0 0 20px 0; min-height: 40px;">Find the fastest, safest paths to designated shelters.</p>
+                            <button onclick="document.querySelector('.nav-item[data-page=rescue]').click()" class="btn-primary" style="width: 100%; background: transparent; border: 1px solid #52c41a; color: #52c41a; padding: 10px;">Open Service</button>
+                        </div>
+
+                        <!-- Disaster Estimation -->
+                        <div class="card" style="border: 1px solid #1f3a53; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; text-align: center; padding: 25px 20px; border-top: 3px solid #722ed1;" onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                            <div style="width: 70px; height: 70px; border-radius: 50%; background: rgba(114, 46, 209, 0.1); color: #722ed1; display: flex; justify-content: center; align-items: center; font-size: 32px; margin: 0 auto 15px auto;">
+                                <i class="fas fa-wave-square"></i>
+                            </div>
+                            <h3 style="color: white; margin: 0 0 10px 0; font-size: 18px;">Disaster Estimation</h3>
+                            <p style="color: #8bb1d4; font-size: 13px; margin: 0 0 20px 0; min-height: 40px;">Test preparedness via intense virtual reality estimations.</p>
+                            <button onclick="document.querySelector('.nav-item[data-page=estimation]').click()" class="btn-primary" style="width: 100%; background: transparent; border: 1px solid #722ed1; color: #722ed1; padding: 10px;">Open Service</button>
+                        </div>
+
+                        <!-- AI Risk Analysis -->
+                        <div class="card" style="border: 1px solid #1f3a53; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; text-align: center; padding: 25px 20px; border-top: 3px solid #fa541c;" onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                            <div style="width: 70px; height: 70px; border-radius: 50%; background: rgba(250, 84, 28, 0.1); color: #fa541c; display: flex; justify-content: center; align-items: center; font-size: 32px; margin: 0 auto 15px auto;">
+                                <i class="fas fa-brain"></i>
+                            </div>
+                            <h3 style="color: white; margin: 0 0 10px 0; font-size: 18px;">AI Risk Analysis</h3>
+                            <p style="color: #8bb1d4; font-size: 13px; margin: 0 0 20px 0; min-height: 40px;">Neural Network regional risk heatmaps and reports.</p>
+                            <button onclick="document.querySelector('.nav-item[data-page=heatmap]').click()" class="btn-primary" style="width: 100%; background: transparent; border: 1px solid #fa541c; color: #fa541c; padding: 10px;">Open Service</button>
+                        </div>
+
+                        <!-- Historical Earthquake Data -->
+                        <div class="card" style="border: 1px solid #1f3a53; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; text-align: center; padding: 25px 20px; border-top: 3px solid #eb2f96;" onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                            <div style="width: 70px; height: 70px; border-radius: 50%; background: rgba(235, 47, 150, 0.1); color: #eb2f96; display: flex; justify-content: center; align-items: center; font-size: 32px; margin: 0 auto 15px auto;">
+                                <i class="fas fa-history"></i>
+                            </div>
+                            <h3 style="color: white; margin: 0 0 10px 0; font-size: 18px;">Historical Earthquake Data</h3>
+                            <p style="color: #8bb1d4; font-size: 13px; margin: 0 0 20px 0; min-height: 40px;">Analyze 100+ years of deep geological events.</p>
+                            <button onclick="document.querySelector('.nav-item[data-page=history]').click()" class="btn-primary" style="width: 100%; background: transparent; border: 1px solid #eb2f96; color: #eb2f96; padding: 10px;">Open Service</button>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Monitoring Page (Old Dashboard) -->
+                <div id="page-monitoring" class="page-section">
+                    <p data-type="alert" class="alert"></p>
+
+                    <!-- TSUNAMI ALERT BOX -->
+                    <div id="tsunami-alert-box" style="display: none; background: rgba(245, 34, 45, 0.15); border: 1px solid #ff4d4f; border-left: 5px solid #ff4d4f; padding: 15px; margin-bottom: 20px; border-radius: 4px; box-shadow: 0 0 15px rgba(255, 77, 79, 0.3);">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <h3 style="color: #ff4d4f; margin: 0; display: flex; align-items: center; gap: 10px;">
+                                    <i class="fas fa-exclamation-triangle" style="animation: blink 1s infinite;"></i> 
+                                    ⚠️ Possible Tsunami Risk Detected
+                                </h3>
+                                <p style="color: #fff; margin: 5px 0 0 0; font-size: 14px;" id="tsunami-alert-text">Active warnings in effect.</p>
+                            </div>
+                            <div style="text-align: right;">
+                                <h2 style="color: #1890ff; margin: 0; font-size: 28px;" id="tsunami-count">0</h2>
+                                <span style="color: #8bb1d4; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Risks Today</span>
+                            </div>
+                        </div>
+                    </div>
+                    <style>@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }</style>
+
+                    <div class="stats-grid">
+                        <div class="card">
+                          <h3>Earthquakes (7 Days)</h3>
+                          <h2 id="total">--</h2>
+                        </div>
+
+                        <div class="card">
+                          <h3>Avg Magnitude</h3>
+                          <h2 id="avg">--</h2>
+                        </div>
+
+                        <div class="card">
+                          <h3>Max Magnitude</h3>
+                          <h2 id="max">--</h2>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="card map-card">
+                            <div class="card-header">
+                                <h3>Global Activity Map</h3>
+                                <button class="btn-icon"><i class="fas fa-expand"></i></button>
+                            </div>
+                            <div class="card-body">
+                                <div id="map" class="map-placeholder">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card table-card">
+                            <div class="card-header">
+                                <h3>Recent Earthquakes</h3>
+                                <div style="display: flex; gap: 10px;">
+                                    <select id="magFilter" onchange="window.updateDashboardTablesAndChartsGlobal()" style="background: #1f3a53; color: white; border: 1px solid #13c2c2; border-radius: 4px; padding: 4px; outline: none; cursor: pointer;">
+                                        <option value="all">All Magnitudes</option>
+                                        <option value="4">M 4.0+</option>
+                                        <option value="6">M 6.0+</option>
+                                    </select>
+                                    <button onclick="downloadData()">Export CSV</button>
+                                    <button id="viewAllBtn" class="btn-link" style="cursor:pointer;" onclick="window.toggleViewAllQuakes()">View All</button>
+                                </div>
+                            </div>
+                            <div class="card-body" id="tableCardBody" style="max-height: 380px; overflow-y: auto;">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Time</th>
+                                            <th>Location</th>
+                                            <th>Mag</th>
+                                            <th>Depth</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="recent-table-body">
+                                        <!-- Populated via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="card time-card">
+                            <div class="card-header">
+                                <h3>Earthquakes vs Time</h3>
+                                <button class="btn-icon"><i class="fas fa-chart-area"></i></button>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="timeSeriesChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" style="margin-top: 20px; border: 1px solid #ff4d4f; box-shadow: 0 0 10px rgba(255,77,79,0.1); border-radius: 8px;">
+                        <div class="card-header" style="background: rgba(255,77,79,0.1); border-bottom: 1px solid #ff4d4f; padding: 15px;">
+                            <h3 style="color: #ff4d4f; margin: 0;"><i class="fas fa-bolt"></i> Top 10 Strongest Earthquakes Today</h3>
+                        </div>
+                        <div class="card-body" style="padding: 15px; overflow-x: auto;">
+                            <table class="data-table" style="width: 100%; text-align: left; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid #333; color: #ccc;">
+                                        <th style="padding: 10px;">Rank</th>
+                                        <th style="padding: 10px;">Location</th>
+                                        <th style="padding: 10px;">Magnitude</th>
+                                        <th style="padding: 10px;">Depth</th>
+                                        <th style="padding: 10px;">Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="top-10-table-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Plate Movement Section -->
+                <div id="page-movement" class="page-section" style="display: none;">
+                    <div class="dashboard-grid">
+                        <div class="card map-card" style="width: 100%;">
+                            <div class="card-header">
+                                <h3>Tectonic Plate Movement</h3>
+                                <div style="font-size: 13px; color: #8bb1d4; display: flex; align-items: center; gap: 10px;">
+                                    <span><span style="color: #ff4d4f; font-weight:bold;">—</span> Convergent</span>
+                                    <span><span style="color: #52c41a; font-weight:bold;">—</span> Divergent</span>
+                                    <span><span style="color: #faad14; font-weight:bold;">—</span> Transform</span>
+                                    <span><i class="fas fa-caret-up" style="color: rgba(255,255,255,0.8);"></i> Direction</span>
+                                    <span><span style="display:inline-block; width:8px;height:8px; border-radius:50%; background:rgba(255,255,255,0.8);"></span> Quakes M4.0+</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <style>
+                                    @keyframes moveDirAnim {
+                                        0% { transform: translateY(0); opacity: 0; }
+                                        50% { opacity: 1; }
+                                        100% { transform: translateY(-15px); opacity: 0; }
+                                    }
+                                </style>
+                                <div id="movementMap" class="map-placeholder" style="height: 600px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Global Seismic Control Room -->
+                <div id="page-control" class="page-section" style="display: none;">
+                    <div class="ticker-wrap">
+                        <div class="ticker" id="cr-ticker">Waiting for live earthquake telemetry...</div>
+                    </div>
+                    
+                    <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-top: 15px;">
+                        <div class="stat-card" style="background: #1f3a53; text-align: center; border: 1px solid #333;">
+                            <h3 style="color: white; margin: 0 0 10px 0;">Earthquakes Today</h3>
+                            <div class="stat-number" id="cr-today" style="color: #1890ff; font-size: 36px; font-weight: bold;">0</div>
+                        </div>
+                        <div class="stat-card" style="background: #1f3a53; text-align: center; border: 1px solid #333;">
+                            <h3 style="color: white; margin: 0 0 10px 0;">Earthquakes Last Hour</h3>
+                            <div class="stat-number" id="cr-hour" style="color: #faad14; font-size: 36px; font-weight: bold;">0</div>
+                        </div>
+                        <div class="stat-card" style="background: #1f3a53; text-align: center; border: 1px solid #333;">
+                            <h3 style="color: white; margin: 0 0 10px 0;">Strong (Magnitude > 5)</h3>
+                            <div class="stat-number" id="cr-strong" style="color: #ff4d4f; font-size: 36px; font-weight: bold;">0</div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid" style="grid-template-columns: 2fr 1fr; margin-top: 20px;">
+                        <div class="card" style="padding: 0; overflow: hidden; height: 400px; border: 1px solid #333; border-radius: 8px;">
+                            <div id="crMap" style="width: 100%; height: 100%; background: #0b1a2a; z-index: 1;"></div>
+                        </div>
+                        
+                        <div class="card" style="border: 1px solid #333; height: 400px;">
+                            <h3 style="margin-top: 0; color: white;">Regional Activity Overview</h3>
+                            <div style="height: 330px; width: 100%;"><canvas id="crChart"></canvas></div>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 20px; border: 1px solid #333;">
+                        <h3 style="margin-top: 0; display: flex; justify-content: space-between; color: white;">
+                            Live Global Feed
+                            <span style="font-size: 13px; color: #52c41a; font-weight: normal;"><i class="fas fa-sync fa-spin"></i> 60s Sync Active</span>
+                        </h3>
+                        <div style="overflow-x: auto; max-height: 350px; overflow-y: auto; border: 1px solid #333; border-radius: 4px;">
+                            <table class="data-table" style="width: 100%; text-align: left; border-collapse: collapse; color: #aaa;">
+                                <thead style="background: #1f3a53; position: sticky; top: 0; z-index: 2;">
+                                    <tr>
+                                        <th style="padding: 12px; color: white;">Time</th>
+                                        <th style="padding: 12px; color: white;">Location</th>
+                                        <th style="padding: 12px; color: white;">Magnitude</th>
+                                        <th style="padding: 12px; color: white;">Depth</th>
+                                        <th style="padding: 12px; color: white;">Region</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cr-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <style>
+                    .ticker-wrap { width: 100%; overflow: hidden; background: rgba(255, 77, 79, 0.15); color: white; padding: 10px 0; border: 1px solid #ff4d4f; border-radius: 6px; }
+                    .ticker { display: inline-block; white-space: nowrap; padding-left: 100%; animation: crTicker 30s linear infinite; font-size: 14px; font-weight: 500; }
+                    @keyframes crTicker { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
+                    .cr-pulse { border-radius: 50%; animation: expandFade 2s infinite; }
+                    #cr-table-body tr:hover { background: #1a2a3a; }
+                </style>
+
+                <!-- Plate Tectonics Page -->
+                <div id="page-tectonics" class="page-section" style="display: none;">
+                    <div class="card" style="height: calc(100vh - 120px); position: relative; padding: 0; overflow: hidden; background: #000; border-radius: 10px; border: 1px solid #1890ff; display: flex; flex-direction: column;">
+                        <div class="card-header" style="background: rgba(24,144,255,0.1); border-bottom: 1px solid #1890ff; display: flex; align-items: center; justify-content: space-between; padding: 15px 20px;">
+                            <h3 style="margin: 0; color: #1890ff; display: flex; align-items: center; gap: 10px;"><i class="fas fa-layer-group"></i> Plate Tectonics Visualization</h3>
+                            <div style="display: flex; gap: 15px; align-items: center;">
+                                <label style="color: white; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                    <input type="checkbox" id="toggle-plates" checked onchange="window.toggleTectonicsLayers()" style="accent-color: #1890ff; width: 16px; height: 16px;">
+                                    Tectonic Plates
+                                </label>
+                                <label style="color: white; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                    <input type="checkbox" id="toggle-eqs" checked onchange="window.toggleTectonicsLayers()" style="accent-color: #ff4d4f; width: 16px; height: 16px;">
+                                    Earthquake Markers
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div style="flex: 1; position: relative;">
+                            <div id="tectonicsMap" style="width: 100%; height: 100%; background: #0b1a2a; z-index: 1;"></div>
+                            
+                            <div style="position: absolute; bottom: 30px; left: 20px; z-index: 10; width: 330px;">
+                                <div style="background: rgba(11,26,42,0.9); padding: 15px; border-radius: 8px; border: 1px solid #1f3a53; backdrop-filter: blur(5px); margin-bottom: 15px;">
+                                    <h4 style="margin: 0 0 8px 0; color: white; display: flex; align-items: center; gap: 8px;"><i class="fas fa-info-circle" style="color: #1890ff;"></i> Scientific Overview</h4>
+                                    <p style="color: #bbb; font-size: 13px; margin: 0; line-height: 1.5;">Most earthquakes occur along tectonic plate boundaries where major continental and oceanic plates interact. Tracking these boundaries reveals the Earth's most volatile fault zones naturally clustering along trenches and oceanic ridges.</p>
+                                </div>
+
+                                <div style="background: rgba(11,26,42,0.9); padding: 15px; border-radius: 8px; border: 1px solid #1f3a53; backdrop-filter: blur(5px);">
+                                    <h4 style="margin: 0 0 10px 0; color: white;">Tectonic Map Legend</h4>
+                                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;"><div style="width: 20px; height: 3px; background: #ff4d4f;"></div><span style="color: #ccc; font-size: 13px;">Convergent Boundary (Trench)</span></div>
+                                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;"><div style="width: 20px; height: 3px; background: #52c41a;"></div><span style="color: #ccc; font-size: 13px;">Divergent Boundary (Ridge)</span></div>
+                                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;"><div style="width: 20px; height: 3px; background: #faad14;"></div><span style="color: #ccc; font-size: 13px;">Transform Boundary (Slip)</span></div>
+                                    <div style="display: flex; align-items: center; gap: 10px;"><div style="width: 14px; height: 14px; background: rgba(255,100,100,0.5); border: 2px solid #ff4d4f; border-radius: 50%;"></div><span style="color: #ccc; font-size: 13px;">M5.0+ Seismic Event</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Volcano Monitor Page -->
+                <div id="page-volcanoes" class="page-section" style="display: none;">
+                    <div class="card" style="height: calc(100vh - 120px); position: relative; padding: 0; overflow: hidden; background: #000; border-radius: 10px; border: 1px solid #ff4d4f; display: flex; flex-direction: column;">
+                        <div class="card-header" style="background: rgba(255,77,79,0.1); border-bottom: 1px solid #ff4d4f; padding: 15px 20px;">
+                            <h3 style="margin: 0; color: #ff4d4f; display: flex; align-items: center; gap: 10px;"><i class="fas fa-mountain"></i> Global Volcano Activity Monitor</h3>
+                        </div>
+                        
+                        <div style="flex: 1; position: relative;">
+                            <div id="volcanoMap" style="width: 100%; height: 100%; background: #0b1a2a; z-index: 1;"></div>
+                            
+                            <div style="position: absolute; bottom: 30px; left: 20px; z-index: 10; width: 340px;">
+                                <div style="background: rgba(11,26,42,0.9); padding: 15px; border-radius: 8px; border: 1px solid #ff4d4f; backdrop-filter: blur(5px); margin-bottom: 15px;">
+                                    <h4 style="margin: 0 0 8px 0; color: white; display: flex; align-items: center; gap: 8px;"><i class="fas fa-info-circle" style="color: #ff4d4f;"></i> Tectonic Relationship</h4>
+                                    <p style="color: #bbb; font-size: 13px; margin: 0; line-height: 1.5;">Volcanoes and earthquakes share a direct tectonic correlation. Earthquakes primarily manifest along the exact same active plate boundaries (particularly the Ring of Fire) where magma frequently breaches the crust forming active volcanoes.</p>
+                                </div>
+
+                                <div style="background: rgba(11,26,42,0.9); padding: 15px; border-radius: 8px; border: 1px solid #1f3a53; backdrop-filter: blur(5px);">
+                                    <h4 style="margin: 0 0 10px 0; color: white;">Monitor Legend</h4>
+                                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;"><div style="width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 14px solid #ff4d4f;"></div><span style="color: #ccc; font-size: 13px;">Active Volcano</span></div>
+                                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;"><div style="width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 14px solid #faad14;"></div><span style="color: #ccc; font-size: 13px;">Dormant Volcano</span></div>
+                                    <div style="display: flex; align-items: center; gap: 10px;"><div style="width: 14px; height: 14px; background: rgba(82,196,26,0.3); border: 2px solid #52c41a; border-radius: 50%;"></div><span style="color: #ccc; font-size: 13px;">Regional Seismic Event</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tsunami Estimation Page -->
+                <div id="page-tsunami" class="page-section" style="display: none;">
+                    <div class="card" style="height: calc(100vh - 120px); position: relative; padding: 0; overflow: hidden; background: #000; border-radius: 10px; border: 1px solid #1890ff; display: flex; flex-direction: column;">
+                        <div class="card-header" style="background: rgba(24,144,255,0.1); border-bottom: 1px solid #1890ff; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between;">
+                            <h3 style="margin: 0; color: #1890ff; display: flex; align-items: center; gap: 10px;"><i class="fas fa-water"></i> Tsunami Wave Estimation</h3>
+                            <button class="btn-primary" onclick="window.triggerTsunamiEstimation()" style="background: #1890ff; border-color: #1890ff;"><i class="fas fa-play"></i> Process M 7.0+ Ocean Event</button>
+                        </div>
+                        
+                        <div style="flex: 1; position: relative;">
+                            <div id="tsunamiMap" style="width: 100%; height: 100%; background: #0b1a2a; z-index: 1;"></div>
+                            
+                            <div style="position: absolute; bottom: 30px; left: 20px; z-index: 10; width: 340px;">
+                                <div id="tsunami-status-panel" style="background: rgba(11,26,42,0.9); padding: 15px; border-radius: 8px; border: 1px solid #1f3a53; backdrop-filter: blur(5px); margin-bottom: 15px; transition: all 0.3s ease;">
+                                    <h4 style="margin: 0 0 10px 0; color: white; display: flex; align-items: center; gap: 8px;"><i class="fas fa-broadcast-tower" style="color: #1890ff;"></i> Warning Center Network</h4>
+                                    <div style="color: #52c41a; font-weight: bold; font-size: 15px; margin-bottom: 10px;" id="tsunami-state">Monitoring Pacific & Atlantic Basins...</div>
+                                    <div style="display: flex; flex-direction: column; gap: 5px; color: #ccc; font-size: 13px;">
+                                        <div style="display: flex; justify-content: space-between;"><span>Event Source:</span> <span id="ts-source" style="color: white; text-align: right; max-width: 180px;">N/A</span></div>
+                                        <div style="display: flex; justify-content: space-between;"><span>Displacement Mag:</span> <span id="ts-mag" style="color: white;">N/A</span></div>
+                                    </div>
+                                </div>
+
+                                <div style="background: rgba(11,26,42,0.9); padding: 15px; border-radius: 8px; border: 1px solid #1f3a53; backdrop-filter: blur(5px);">
+                                    <h4 style="margin: 0 0 10px 0; color: white;">Propagation Metrics</h4>
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                        <span style="color: #ccc; font-size: 13px;">Estimated Velocity:</span>
+                                        <span style="color: #1890ff; font-weight: bold; font-size: 13px;">~800 km/h</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                        <span style="color: #ccc; font-size: 13px;">Coastal Arrival:</span>
+                                        <div style="background: #1f3a53; padding: 4px 10px; border-radius: 4px; color: white; font-family: monospace; font-size: 16px; font-weight: bold;" id="ts-countdown">00:00:00</div>
+                                    </div>
+                                    <div style="border-top: 1px solid #333; padding-top: 10px;">
+                                        <span style="color: #ccc; font-size: 13px; display: block; margin-bottom: 5px;">Risk Level for Nearby Coasts:</span>
+                                        <div id="ts-risk" style="color: #52c41a; font-weight: bold; font-size: 14px;">NORMAL / SAFE</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <style>
+                    @keyframes tsunamiWave {
+                        0% { transform: scale(0.1); opacity: 1; border-width: 4px; }
+                        100% { transform: scale(30); opacity: 0; border-width: 1px; }
+                    }
+                    .tsunami-ring { border: solid #1890ff; border-radius: 50%; position: absolute; top: 0; left: 0; right: 0; bottom: 0; margin: auto; box-shadow: 0 0 20px rgba(24,144,255,0.4) inset, 0 0 20px rgba(24,144,255,0.4); }
+                    @keyframes sirenTsunami {
+                        0% { background: rgba(11,26,42,0.9); border-color: #1890ff; }
+                        50% { background: rgba(24,144,255,0.3); border-color: #1890ff; }
+                        100% { background: rgba(11,26,42,0.9); border-color: #1890ff; }
+                    }
+                </style>
+
+                <!-- Historical Analysis Page -->
+                <div id="page-history" class="page-section" style="display: none;">
+                    <div class="card" style="border: 1px solid #722ed1; box-shadow: 0 0 20px rgba(114, 46, 209, 0.1);">
+                        <div class="card-header" style="background: rgba(114, 46, 209, 0.1); border-bottom: 1px solid #722ed1; padding: 15px 20px;">
+                            <h3 style="margin: 0; color: #b37feb; display: flex; align-items: center; gap: 10px;"><i class="fas fa-landmark"></i> Historical Earthquake Analysis</h3>
+                        </div>
+                        
+                        <div class="card-body">
+                            <!-- Charts Grid -->
+                            <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 20px;">
+                                <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border: 1px solid #333;">
+                                    <h4 style="color: #ccc; margin: 0 0 10px 0; font-size: 14px; text-align: center;">Major M8.0+ Events per Decade</h4>
+                                    <div style="height: 250px; width: 100%;"><canvas id="historyDecadeChart"></canvas></div>
+                                </div>
+                                <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border: 1px solid #333;">
+                                    <h4 style="color: #ccc; margin: 0 0 10px 0; font-size: 14px; text-align: center;">Magnitude Distribution (Top Historicals)</h4>
+                                    <div style="height: 250px; width: 100%;"><canvas id="historyMagChart"></canvas></div>
+                                </div>
+                            </div>
+                            
+                            <div class="dashboard-grid" style="grid-template-columns: 2fr 1fr;">
+                                <!-- Monumental Events Table -->
+                                <div style="border: 1px solid #333; border-radius: 8px; overflow: hidden;">
+                                    <div style="background: #1f3a53; padding: 15px;">
+                                        <h4 style="margin: 0; color: white;">Famous Historical Earthquakes</h4>
+                                    </div>
+                                    <div style="overflow-x: auto; max-height: 400px; overflow-y: auto;">
+                                        <table class="data-table" style="width: 100%; text-align: left; border-collapse: collapse; color: #aaa;">
+                                            <thead style="background: rgba(0,0,0,0.3); position: sticky; top: 0;">
+                                                <tr>
+                                                    <th style="padding: 12px; color: #b37feb;">Year</th>
+                                                    <th style="padding: 12px; color: white;">Location</th>
+                                                    <th style="padding: 12px; color: #ff4d4f;">Magnitude</th>
+                                                    <th style="padding: 12px; color: #ccc;">Notable Impact</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="history-table-body">
+                                                <!-- Populated natively by JS -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Timeline View -->
+                                <div style="background: rgba(114, 46, 209, 0.05); padding: 20px; border-radius: 8px; border: 1px solid #722ed1; overflow-y: auto; max-height: 440px;">
+                                    <h4 style="color: #b37feb; margin: 0 0 15px 0; border-bottom: 1px solid #722ed1; padding-bottom: 10px;">Chronological Historical Timeline</h4>
+                                    <div id="history-timeline" style="display: flex; flex-direction: column; gap: 15px;">
+                                        <!-- Populated natively by JS -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Satellite Monitor Page -->
+                <div id="page-satellite" class="page-section" style="display: none;">
+                    <div class="card" style="height: calc(100vh - 120px); position: relative; padding: 0; overflow: hidden; background: #000; border-radius: 10px; border: 1px solid #08c; display: flex; flex-direction: column;">
+                        <div class="card-header" style="background: rgba(0, 136, 204, 0.1); border-bottom: 1px solid #08c; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 10;">
+                            <h3 style="margin: 0; color: #08c; display: flex; align-items: center; gap: 10px;"><i class="fas fa-satellite"></i> Orbital Seismic Detection Network</h3>
+                            <div style="color: #08c; font-family: monospace; font-size: 14px;"><i class="fas fa-satellite-dish blink"></i> LINK ESTABLISHED</div>
+                        </div>
+                        
+                        <div style="flex: 1; position: relative;">
+                            <div id="satelliteMap" style="width: 100%; height: 100%; z-index: 1; filter: sepia(0.2) hue-rotate(180deg) saturate(1.5) contrast(1.1) brightness(0.6);"></div>
+                            
+                            <div class="orbit-sat" style="animation: orbit1 60s linear infinite; top: 10%; left: -50px;"><i class="fas fa-satellite" style="color: #08c; font-size: 24px; filter: drop-shadow(0 0 5px #08c);"></i></div>
+                            <div class="orbit-sat" style="animation: orbit2 45s linear infinite; bottom: 20%; right: -50px;"><i class="fas fa-space-shuttle" style="color: #ccc; transform: rotate(-45deg); font-size: 20px;"></i></div>
+                            
+                            <div style="position: absolute; top: 20px; left: 20px; z-index: 10; width: 300px;">
+                                <div style="background: rgba(0, 10, 20, 0.85); padding: 15px; border-radius: 8px; border: 1px solid #08c; box-shadow: 0 0 15px rgba(0,136,204,0.3); backdrop-filter: blur(5px);">
+                                    <h4 style="margin: 0 0 15px 0; color: white; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #333; padding-bottom: 8px;"><i class="fas fa-microchip" style="color: #08c;"></i> System Telemetry</h4>
+                                    
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                                        <span style="color: #888; font-size: 13px;">Targets Acquired:</span>
+                                        <span id="sat-total" style="color: #08c; font-weight: bold; font-family: monospace; font-size: 15px;">0</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                                        <span style="color: #888; font-size: 13px;">Critical (M>5.0):</span>
+                                        <span id="sat-critical" style="color: #ff4d4f; font-weight: bold; font-family: monospace; font-size: 15px;">0</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                        <span style="color: #888; font-size: 13px;">Active Regions:</span>
+                                        <span id="sat-regions" style="color: #fff; font-weight: bold; font-family: monospace; font-size: 15px;">Scanning...</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="position: absolute; bottom: 20px; right: 20px; z-index: 10; pointer-events: none;">
+                                <div style="color: #08c; font-family: monospace; font-size: 12px; text-align: right; text-shadow: 0 0 5px #08c;">
+                                    <div>LAT/LON TRACKING: ONLINE</div>
+                                    <div>INFRARED SCANNERS: NOMINAL</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <style>
+                    .blink { animation: blinker 1s linear infinite; }
+                    @keyframes blinker { 50% { opacity: 0; } }
+                    .orbit-sat { position: absolute; z-index: 5; pointer-events: none; }
+                    @keyframes orbit1 {
+                        0% { transform: translateX(0vw) translateY(0vh) rotate(20deg); }
+                        100% { transform: translateX(120vw) translateY(30vh) rotate(20deg); }
+                    }
+                    @keyframes orbit2 {
+                        0% { transform: translateX(0vw) translateY(0vh) rotate(-20deg); }
+                        100% { transform: translateX(-120vw) translateY(-40vh) rotate(-20deg); }
+                    }
+                    @keyframes satPulse {
+                        0% { transform: scale(0.5); opacity: 1; border-width: 4px; }
+                        100% { transform: scale(3.5); opacity: 0; border-width: 1px; }
+                    }
+                    .sat-eq-marker { border-radius: 50%; }
+                    .sat-eq-ring { position: absolute; top: -50%; left: -50%; right: -50%; bottom: -50%; border-radius: 50%; border: 2px solid; animation: satPulse 3s cubic-bezier(0.1, 0.8, 0.3, 1) infinite; }
+                    .satellite-popup .leaflet-popup-content-wrapper { background: rgba(0,10,20,0.9); border: 1px solid #08c; box-shadow: 0 0 10px #08c; border-radius: 4px; }
+                    .satellite-popup .leaflet-popup-tip { background: rgba(0,10,20,0.9); }
+                </style>
+
+                <!-- Analysis Page -->
+                <div id="page-analysis" class="page-section">
+                    <div class="analysis-grid">
+                        <div class="card chart-card full-width">
+                            <div class="card-header">
+                                <h3>Gutenberg-Richter Graph</h3>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="grChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="card chart-card">
+                            <div class="card-header">
+                                <h3>Magnitude Distribution</h3>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="chart2"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="card chart-card">
+                            <div class="card-header">
+                                <h3>Frequency-Magnitude Distribution</h3>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="fmChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Heatmap Page -->
+                <div id="page-heatmap" class="page-section">
+                    <div class="card" style="height: calc(100vh - 120px);">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h3>Live Global Heatmap</h3>
+                                <p class="sub-header">Real-time thermal density visualization of seismic activity</p>
+                            </div>
+                            <button class="btn-primary" onclick="window.toggleHeatmapData()">Toggle Live Log</button>
+                        </div>
+                        <div class="card-body" style="height: calc(100% - 80px); padding: 0; position: relative;">
+                            <div id="heatmapDataPanel" style="position: absolute; top: 10px; right: 10px; width: 300px; max-height: calc(100% - 20px); background: rgba(11, 26, 42, 0.9); z-index: 1000; border-radius: 8px; border: 1px solid #13c2c2; padding: 15px; color: white; display: none; overflow-y: auto; backdrop-filter: blur(5px);">
+                                <h3 style="color: #13c2c2; font-size: 16px; margin-bottom: 10px; border-bottom: 1px solid #1f3a53; padding-bottom: 5px;">🔥 Live Activity Log</h3>
+                                <ul id="heatmap-live-list" style="list-style: none; padding: 0; margin: 0; font-size: 13px;">
+                                    <!-- Live items go here -->
+                                </ul>
+                            </div>
+                            <div id="heatmapMap" style="width: 100%; height: 100%; border-radius: 0 0 10px 10px; background: #0b1a2a; z-index: 1;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Japan Live Page -->
+                <div id="page-japan" class="page-section">
+                    <div class="header-banner" style="background: linear-gradient(135deg, #7a0000 0%, #1a0b0b 100%); padding: 25px; border-radius: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 20px; border: 1px solid #331111;">
+                        <div style="font-size: 45px; background: white; border-radius: 50%; width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 15px rgba(255,0,0,0.3);">
+                            <span style="color: #bc002d; font-weight: bold; font-size: 35px; border-radius: 50%;">●</span>
+                        </div>
+                        <div>
+                            <h2 style="margin:0; color: white; letter-spacing: 1px;">Japan Seismic Network</h2>
+                            <p style="margin:5px 0 0 0; color: #ff9999;">Live regional monitoring of the Ring of Fire</p>
+                        </div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="card" style="background: linear-gradient(to right, #1f3a53, #15293b); border-left: 4px solid #bc002d;">
+                          <h3>Total Japan Quakes</h3>
+                          <h2 id="japan-total">--</h2>
+                        </div>
+                        <div class="card" style="background: linear-gradient(to right, #1f3a53, #15293b); border-left: 4px solid #bc002d;">
+                          <h3>Avg Magnitude</h3>
+                          <h2 id="japan-avg">--</h2>
+                        </div>
+                        <div class="card" style="background: linear-gradient(to right, #1f3a53, #15293b); border-left: 4px solid #bc002d;">
+                          <h3>Max Magnitude</h3>
+                          <h2 id="japan-max">--</h2>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-grid">
+                        <div class="card map-card" style="height: 500px;">
+                            <div class="card-header">
+                                <h3>Regional Activity Map</h3>
+                            </div>
+                            <div class="card-body" style="height: calc(100% - 60px); padding: 0; position: relative;">
+                                <div id="japanMap" style="width: 100%; height: 100%; border-radius: 0 0 10px 10px; background: #0b1a2a; z-index: 1;"></div>
+                            </div>
+                        </div>
+
+                        <div class="card table-card" style="height: 500px;">
+                            <div class="card-header">
+                                <h3>Latest Regional Events</h3>
+                            </div>
+                            <div class="card-body" style="height: calc(100% - 60px); overflow-y: auto; padding: 15px;">
+                                <ul id="japan-live-list" style="list-style: none; padding: 0; margin: 0; font-size: 13px;">
+                                    <!-- Japan items go here -->
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- India Live Page -->
+                <div id="page-india" class="page-section">
+                    <div class="header-banner" style="background: linear-gradient(135deg, #ff9933 0%, #138808 100%); padding: 25px; border-radius: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 20px; border: 1px solid #1f3a53;">
+                        <div style="font-size: 45px; background: white; border-radius: 50%; width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 15px rgba(255,255,255,0.3);">
+                            <i class="fas fa-dharmachakra" style="color: #000080; font-size: 40px;"></i>
+                        </div>
+                        <div>
+                            <h2 style="margin:0; color: white; letter-spacing: 1px;">India Seismic Network</h2>
+                            <p style="margin:5px 0 0 0; color: #fff;">Live monitoring of the Indian Subcontinent</p>
+                        </div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="card" style="background: linear-gradient(to right, #1f3a53, #15293b); border-left: 4px solid #ff9933;">
+                          <h3>Total India Quakes</h3>
+                          <h2 id="india-total">--</h2>
+                        </div>
+                        <div class="card" style="background: linear-gradient(to right, #1f3a53, #15293b); border-left: 4px solid #ffffff;">
+                          <h3>Avg Magnitude</h3>
+                          <h2 id="india-avg">--</h2>
+                        </div>
+                        <div class="card" style="background: linear-gradient(to right, #1f3a53, #15293b); border-left: 4px solid #138808;">
+                          <h3>Max Magnitude</h3>
+                          <h2 id="india-max">--</h2>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-grid">
+                        <div class="card map-card" style="height: 500px;">
+                            <div class="card-header">
+                                <h3>Regional Activity Map</h3>
+                            </div>
+                            <div class="card-body" style="height: calc(100% - 60px); padding: 0; position: relative;">
+                                <div id="indiaMap" style="width: 100%; height: 100%; border-radius: 0 0 10px 10px; background: #0b1a2a; z-index: 1;"></div>
+                            </div>
+                        </div>
+
+                        <div class="card table-card" style="height: 500px;">
+                            <div class="card-header">
+                                <h3>Latest Regional Events</h3>
+                            </div>
+                            <div class="card-body" style="height: calc(100% - 60px); overflow-y: auto; padding: 15px;">
+                                <ul id="india-live-list" style="list-style: none; padding: 0; margin: 0; font-size: 13px;">
+                                    <!-- India items go here -->
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Analysis Page -->
+                <div id="page-analysis" class="page-section">
+                    <div class="analysis-container">
+                        <div class="card form-card">
+                            <div class="card-header">
+                                <h3>Magnitude Data Analysis Model</h3>
+                                <p class="sub-header">Enter parameters to run analyzeive ML model</p>
+                            </div>
+                            <div class="card-body">
+                                <form id="analysis-form" class="ant-form">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Latitude</label>
+                                            <input type="number" step="0.0001" placeholder="e.g. 34.0522" required id="lat">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Longitude</label>
+                                            <input type="number" step="0.0001" placeholder="e.g. -118.2437" required id="lon">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Depth (km)</label>
+                                            <input type="number" step="0.1" placeholder="e.g. 10.5" required id="depth">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Date</label>
+                                            <input type="date" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-actions">
+                                        <button type="submit" class="btn-primary">
+                                            <i class="fas fa-brain"></i> Run Data Analysis
+                                        </button>
+                                        <button type="button" class="btn-default">Reset</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="card result-card hidden" id="analysis-result">
+                            <div class="card-header">
+                                <h3>Data Analysis Results</h3>
+                            </div>
+                            <div class="card-body center-content">
+                                <div class="result-circle">
+                                    <span class="result-value" id="pred-mag">0.0</span>
+                                    <span class="result-label">Analyzeed Magnitude</span>
+                                </div>
+                                <div class="result-details">
+                                    <p id="result" style="font-weight: 600; font-size: 1.1em; color: #177ddc;"></p>
+                                    <p><i class="fas fa-check-circle text-success" style="margin-right: 8px;"></i> High
+                                        confidence (87%)</p>
+                                    <p>Based on historical seismic activity mapped in this region.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Image Analysis Page -->
+                <div id="page-imageanalysis" class="page-section" style="display: none;">
+                    <div class="dashboard-grid" style="grid-template-columns: 1fr; gap: 20px;">
+                        <div class="card" style="border: 1px solid #13c2c2; box-shadow: 0 0 15px rgba(19, 194, 194, 0.15); border-radius: 10px; overflow: hidden; padding: 0;">
+                            <div class="card-header" style="background: rgba(19, 194, 194, 0.1); border-bottom: 1px solid #13c2c2; padding: 15px 20px;">
+                                <h3 style="margin: 0; color: #13c2c2; display: flex; align-items: center; gap: 10px;"><i class="fas fa-brain"></i> Seismic Imagery Data Analysis</h3>
+                            </div>
+                            <div class="card-body" style="padding: 20px; display: flex; flex-direction: column; gap: 20px;">
+                                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                                    
+                                    <!-- Upload Zone -->
+                                    <div style="flex: 1; min-width: 300px;">
+                                        <div id="drag-drop-zone" style=" border: 2px dashed #13c2c2; background: rgba(19, 194, 194, 0.05); border-radius: 8px; padding: 40px 20px; text-align: center; cursor: pointer; transition: 0.3s; position: relative; overflow: hidden;" onclick="document.getElementById('image-upload-input').click()">
+                                            <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: #13c2c2; margin-bottom: 15px;"></i>
+                                            <h4 style="color: white; margin: 0 0 10px 0;">Drag & Drop or Click to Upload</h4>
+                                            <p style="color: #8bb1d4; font-size: 13px; margin: 0;">Supports JPG, PNG, WEBP (Max 5MB)</p>
+                                            <input type="file" id="image-upload-input" accept="image/*" style="display: none;" onchange="window.previewAnalysisImage(event)">
+                                            <img id="image-preview" src="" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.4;">
+                                        </div>
+                                        <button id="analyze-btn" class="btn-primary" onclick="window.analyzeUploadedImage()" style="background: #13c2c2; border-color: #13c2c2; padding: 12px; width: 100%; border-radius: 6px; color: #fff; font-weight: bold; cursor: pointer; margin-top: 15px; font-size: 16px; opacity: 0.5; pointer-events: none;"><i class="fas fa-satellite-dish"></i> Initialize AI Scan</button>
+                                    </div>
+
+                                    <!-- Status / Progress -->
+                                    <div id="analysis-status-panel" style="flex: 1; min-width: 300px; background: rgba(11, 26, 42, 0.8); border: 1px solid #1f3a53; border-radius: 8px; padding: 20px;">
+                                        <h4 style="color: #fff; margin: 0 0 15px 0;"><i class="fas fa-microchip" style="color: #13c2c2;"></i> Processing Telemetry</h4>
+                                        <div id="ai-scan-lines" style="color: #13c2c2; font-family: monospace; font-size: 13px; height: 120px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end;">
+                                            <span style="color: #8bb1d4;">Waiting for data input...</span>
+                                        </div>
+                                        <div style="margin-top: 20px;">
+                                            <div style="display: flex; justify-content: space-between; font-size: 12px; color: #8bb1d4; margin-bottom: 5px;"><span>Neural Net Status</span> <span id="nn-status">IDLE</span></div>
+                                            <div style="width: 100%; height: 6px; background: #0b1a2a; border-radius: 3px; overflow: hidden;">
+                                                <div id="nn-progress" style="width: 0%; height: 100%; background: #13c2c2; transition: width 0.3s ease;"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                <!-- Result Output -->
+                                <div id="image-analysis-result" style="display: none; animation: fadeIn 0.5s;">
+                                    <h3 style="color: #fff; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 20px;">Diagnostic Report</h3>
+                                    <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                                        <div style="background: rgba(19, 194, 194, 0.1); border-left: 4px solid #13c2c2; padding: 15px; border-radius: 4px;">
+                                            <h5 style="color: #13c2c2; margin: 0 0 5px 0; font-size: 12px; text-transform: uppercase;">Confidence</h5>
+                                            <h2 style="color: #fff; margin: 0;" id="ai-res-conf">--</h2>
+                                        </div>
+                                        <div style="background: rgba(255, 77, 79, 0.1); border-left: 4px solid #ff4d4f; padding: 15px; border-radius: 4px;">
+                                            <h5 style="color: #ff4d4f; margin: 0 0 5px 0; font-size: 12px; text-transform: uppercase;">Est. Magnitude</h5>
+                                            <h2 style="color: #fff; margin: 0;" id="ai-res-mag">--</h2>
+                                        </div>
+                                        <div style="background: rgba(250, 173, 20, 0.1); border-left: 4px solid #faad14; padding: 15px; border-radius: 4px;">
+                                            <h5 style="color: #faad14; margin: 0 0 5px 0; font-size: 12px; text-transform: uppercase;">Depth Profile</h5>
+                                            <h2 style="color: #fff; margin: 0;" id="ai-res-depth">--</h2>
+                                        </div>
+                                        <div style="background: rgba(82, 196, 26, 0.1); border-left: 4px solid #52c41a; padding: 15px; border-radius: 4px;">
+                                            <h5 style="color: #52c41a; margin: 0 0 5px 0; font-size: 12px; text-transform: uppercase;">Tsunami Threat</h5>
+                                            <h2 style="color: #fff; margin: 0;" id="ai-res-tsu">--</h2>
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 20px; background: rgba(0,0,0,0.3); border: 1px solid #333; padding: 20px; border-radius: 8px;">
+                                        <h4 style="color: #8bb1d4; margin: 0 0 10px 0;"><i class="fas fa-file-alt"></i> Executive Summary</h4>
+                                        <p id="ai-res-summary" style="color: #fff; margin: 0; line-height: 1.6; font-size: 14px;">--</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Estimation Page -->
+                <div id="page-estimation" class="page-section">
+                    <div class="card">
+                        <h2>Earthquake Estimation</h2>
+
+                        <div class="estimation-controls">
+                            <input type="number" id="sim-mag" placeholder="Enter Magnitude (e.g. 5.5)">
+                            <button onclick="runEstimation()">Start Estimation</button>
+                        </div>
+
+                        <div class="estimation-area">
+                            <div id="seismic-focus" style="display: none;"></div>
+                            <div class="seismic-ring r1"></div>
+                            <div class="seismic-ring r2"></div>
+                            <div class="seismic-ring r3"></div>
+                            <div class="seismic-ring r4"></div>
+                            
+                            <div id="building-glass" class="building-struct">
+                                <div class="floor f4"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                                <div class="floor f3"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                                <div class="floor f2"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                                <div class="floor f1"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                            </div>
+                            
+                            <div id="building-curve" class="building-struct">
+                                <div class="floor f3"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                                <div class="floor f2"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                                <div class="floor f1"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                            </div>
+                            
+                            <div id="building-twist" class="building-struct main-building">
+                                <div class="floor f6"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                                <div class="floor f5"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                                <div class="floor f4"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                                <div class="floor f3"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                                <div class="floor f2"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                                <div class="floor f1"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                            </div>
+                            
+                            <div id="building-eco" class="building-struct">
+                                <div class="floor f5"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                                <div class="floor f4"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                                <div class="floor f3"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                                <div class="floor f2"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                                <div class="floor f1"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                            </div>
+                            
+                            <div id="building-spire" class="building-struct">
+                                <div class="floor f5 spire"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                                <div class="floor f4"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                                <div class="floor f3"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                                <div class="floor f2"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                                <div class="floor f1"><div class="face front"></div><div class="face back"></div><div class="face left"></div><div class="face right"></div></div>
+                            </div>
+                        </div>
+                        <audio id="quakeSound" src="https://www.soundjay.com/misc/sounds/rumble-01.mp3"></audio>
+                        <canvas id="waveChart"></canvas>
+                    </div>
+
+                    <div class="card" style="margin-top: 24px;">
+                        <div class="card-header">
+                            <h3>Live 3D Topographic Seismic Waves</h3>
+                            <p class="sub-header">Real-time estimation of subsurface P & S terrain waves</p>
+                        </div>
+                        <div class="card-body" style="background:#0b1a2a; border-radius: 0 0 10px 10px; padding: 0; overflow: hidden;">
+                            <canvas id="wave3D" style="width:100%; height:300px; display:block;"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3D Earth Viewer Page -->
+                <div id="page-globe" class="page-section">
+                    <div class="card" style="height: calc(100vh - 120px); position: relative; padding: 0; overflow: hidden; background: #000; border-radius: 10px;">
+                        <div style="position: absolute; top: 20px; left: 20px; z-index: 10; pointer-events: none;">
+                            <h2 style="margin: 0; color: white; text-shadow: 0 0 10px rgba(255,255,255,0.5);">Live 3D Global Seismicity</h2>
+                            <p style="color: #8bb1d4; margin: 5px 0;">Interactive Planetary WebGL Rendering</p>
+                        </div>
+                        
+                        <div id="globeViz" style="width: 100%; height: 100%; cursor: grab;"></div>
+                        
+                        <!-- Legend -->
+                        <div style="position: absolute; bottom: 20px; left: 20px; z-index: 10; background: rgba(11,26,42,0.8); padding: 15px; border-radius: 8px; border: 1px solid #1f3a53; backdrop-filter: blur(5px);">
+                            <h4 style="margin: 0 0 10px 0; color: white;">Magnitude Legend</h4>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                                <div style="width: 12px; height: 12px; border-radius: 50%; background: #52c41a; box-shadow: 0 0 8px #52c41a;"></div>
+                                <span style="color: #ccc; font-size: 13px;">Low (< 4.0)</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                                <div style="width: 12px; height: 12px; border-radius: 50%; background: #faad14; box-shadow: 0 0 8px #faad14;"></div>
+                                <span style="color: #ccc; font-size: 13px;">Medium (4.0 - 5.9)</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff4d4f; box-shadow: 0 0 8px #ff4d4f;"></div>
+                                <span style="color: #ccc; font-size: 13px;">High (6.0+)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Regional Pattern Analysis Page -->
+                <div id="page-ai" class="page-section">
+                    <div class="card form-card">
+                        <div class="card-header">
+                            <h3>Regional Pattern Analysis Model</h3>
+                            <p class="sub-header">Select a region to run deep learning analysis on short-term risk factors</p>
+                        </div>
+                        <div class="card-body">
+                            <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                                <select id="ai-region-select" style="background: #1f3a53; color: white; border: 1px solid #13c2c2; border-radius: 4px; padding: 10px; flex: 1; outline: none;">
+                                    <option value="global">Global</option>
+                                    <option value="japan">Japan</option>
+                                    <option value="india">India</option>
+                                    <option value="ring">Pacific Ring of Fire</option>
+                                </select>
+                                <button class="btn-primary" onclick="window.runPatternAnalysis()">Run Pattern Analysis</button>
+                            </div>
+                            
+                            <div id="ai-results" style="display: none; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+                                <div style="display: flex; gap: 20px;">
+                                    <div style="flex: 1;">
+                                        <h4 style="color: #8bb1d4; margin-bottom: 5px;">Analyzeed Risk Level (48 Hrs)</h4>
+                                        <h1 id="ai-risk-level" style="margin: 0; font-size: 36px;">--</h1>
+                                        <p style="margin: 10px 0; font-size: 16px;">Probability: <strong id="ai-prob">--%</strong></p>
+                                        <ul style="color: #aaa; font-size: 13px; line-height: 1.8;">
+                                            <li><i class="fas fa-check-circle" style="color:#52c41a"></i> Latitude & Longitude Correlated</li>
+                                            <li><i class="fas fa-check-circle" style="color:#52c41a"></i> Magnitude / Depth Array Normalized</li>
+                                            <li><i class="fas fa-check-circle" style="color:#52c41a"></i> Historical Frequency Modeled</li>
+                                        </ul>
+                                    </div>
+                                    <div style="flex: 2; height: 200px;">
+                                        <canvas id="aiChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Early Warning System Page -->
+                <div id="page-eew" class="page-section">
+                    <div class="card" style="border: 1px solid #ff4d4f; box-shadow: 0 0 20px rgba(255, 77, 79, 0.2);">
+                        <div class="card-header" style="background: rgba(255,77,79,0.1); border-bottom: 1px solid #ff4d4f; display: flex; align-items: center; justify-content: space-between;">
+                            <h3 style="color: #ff4d4f; margin: 0;"><i class="fas fa-broadcast-tower"></i> Early Warning System (EEW)</h3>
+                            <div style="display: flex; gap: 5px;">
+                                <button class="btn-primary" onclick="window.triggerEEWEstimation('Japan')" style="background: #1890ff; border-color: #1890ff; font-size: 13px;">Japan</button>
+                                <button class="btn-primary" onclick="window.triggerEEWEstimation('India')" style="background: #faad14; border-color: #faad14; color: black; font-size: 13px;">India</button>
+                                <button class="btn-primary" onclick="window.triggerEEWEstimation()" style="background: #ff4d4f; border-color: #ff4d4f; font-size: 13px;"><i class="fas fa-play"></i> Global Simulator</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
+                                <div>
+                                    <div id="eew-status-panel" style="background: #1f3a53; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; transition: 0.3s;">
+                                        <h2 id="eew-alert-msg" style="color: #52c41a; font-size: 24px; margin: 0;">System Standby: No Immediate Threats</h2>
+                                        <p style="color: #8bb1d4; margin-top: 5px;">Monitoring live seismic networks globally...</p>
+                                    </div>
+                                    
+                                    <div id="eew-countdown-container" style="display: none; background: #ff4d4f; padding: 30px; border-radius: 8px; text-align: center; animation: pulseRedEEW 1s infinite; margin-bottom: 20px;">
+                                        <h1 style="color: white; font-size: 50px; margin: 0;" id="eew-timer">15s</h1>
+                                        <p style="color: white; font-weight: bold; font-size: 18px; margin-top: 5px;">Estimated Time to Impact (Seismic Wave Arrival)</p>
+                                    </div>
+
+                                    <div style="background: rgba(255,255,255,0.05); padding: 15px; border-left: 4px solid #1890ff; border-radius: 4px; margin-bottom: 20px;">
+                                        <h4 style="color: white; margin: 0 0 10px 0;">How EEW Works</h4>
+                                        <p style="color: #aaa; font-size: 13px; line-height: 1.6; margin: 0;">Early warning systems detect fast-moving primary P-waves and provide a few precious seconds of warning before the slower, more destructive secondary S-waves (strong shaking) arrive. This allows autonomous systems to halt trains, shut down pipelines, and allows people to drop, cover, and hold on.</p>
+                                    </div>
+                                </div>
+
+                                <div style="height: 400px; position: relative; border-radius: 8px; overflow: hidden; border: 1px solid #333;">
+                                    <div id="eewMap" style="width: 100%; height: 100%; background: #0b1a2a; z-index: 1;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <style>
+                    @keyframes pulseRedEEW {
+                        0% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.7); }
+                        70% { box-shadow: 0 0 0 20px rgba(255, 77, 79, 0); }
+                        100% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0); }
+                    }
+                </style>
+
+                <!-- Seismic Stations Page -->
+                <div id="page-stations" class="page-section">
+                    <div class="card" style="height: calc(100vh - 120px); position: relative; padding: 0; overflow: hidden; background: #000; border-radius: 10px;">
+                        <div class="card-header" style="position: absolute; top: 0; left: 0; right: 0; z-index: 10; background: rgba(11,26,42,0.8); border-bottom: 1px solid #1f3a53; backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: space-between; padding: 20px;">
+                            <h3 style="margin: 0; color: white; display: flex; align-items: center; gap: 10px;"><i class="fas fa-satellite-dish" style="color: #52c41a;"></i> Global Seismic Sensor Network</h3>
+                            <div style="display: flex; gap: 5px;">
+                                <button class="btn-primary" onclick="window.triggerStationEstimation('Japan')" style="background: #1890ff; border-color: #1890ff; font-size: 13px;">Japan</button>
+                                <button class="btn-primary" onclick="window.triggerStationEstimation('India')" style="background: #faad14; border-color: #faad14; color: black; font-size: 13px;">India</button>
+                                <button class="btn-primary" onclick="window.triggerStationEstimation()" style="background: #ff4d4f; border-color: #ff4d4f; font-size: 13px;"><i class="fas fa-wave-square"></i> Global Scan</button>
+                            </div>
+                        </div>
+                        
+                        <div id="stationsMap" style="width: 100%; height: 100%; background: #0b1a2a; z-index: 1;"></div>
+                        
+                        <!-- Legend -->
+                        <div style="position: absolute; bottom: 20px; left: 20px; z-index: 10; background: rgba(11,26,42,0.85); padding: 15px; border-radius: 8px; border: 1px solid #1f3a53; backdrop-filter: blur(5px);">
+                            <h4 style="margin: 0 0 10px 0; color: white;">Network Legend</h4>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                                <div style="width: 12px; height: 12px; background: #fff; border-radius: 2px;"></div>
+                                <span style="color: #ccc; font-size: 13px;">Seismic Station (Standby)</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                                <div style="width: 12px; height: 12px; background: #52c41a; box-shadow: 0 0 10px #52c41a; border-radius: 2px;"></div>
+                                <span style="color: #ccc; font-size: 13px;">Seismic Station (<span style="color:#52c41a">Detecting</span>)</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                                <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff4d4f; border: 2px solid white;"></div>
+                                <span style="color: #ccc; font-size: 13px;">Earthquake Epicenter</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 14px; height: 14px; border-radius: 50%; border: 2px dashed #faad14;"></div>
+                                <span style="color: #ccc; font-size: 13px;">P-Wave Propagation</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <style>
+                    .expanding-ring {
+                        animation: fadeOutRing 2s forwards ease-out;
+                    }
+                    @keyframes fadeOutRing {
+                        0% { opacity: 0.8; stroke-width: 4px; }
+                        100% { opacity: 0; stroke-width: 0px; }
+                    }
+                </style>
+
+                <!-- Earthquake Timeline Replay Page -->
+                <div id="page-timeline" class="page-section">
+                    <div class="card" style="height: calc(100vh - 120px); position: relative; padding: 0; overflow: hidden; background: #000; border-radius: 10px; display: flex; flex-direction: column;">
+                        
+                        <div id="timelineMap" style="flex: 1; width: 100%; z-index: 1;"></div>
+                        
+                        <!-- Timeline Controls -->
+                        <div style="background: #1f3a53; padding: 20px; border-top: 1px solid #333; display: flex; align-items: center; gap: 20px; z-index: 10;">
+                            <button id="tl-play-btn" class="btn-primary" onclick="window.toggleTimelinePlay()" style="width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #1890ff; border: none; font-size: 20px;">
+                                <i class="fas fa-play" id="tl-play-icon"></i>
+                            </button>
+                            
+                            <div style="flex: 1; display: flex; flex-direction: column; gap: 10px;">
+                                <div style="display: flex; justify-content: space-between; color: white; font-size: 14px;">
+                                    <span id="tl-start-date">--</span>
+                                    <strong id="tl-current-date" style="color: #ff4d4f; font-size: 16px;">--</strong>
+                                    <span id="tl-end-date">--</span>
+                                </div>
+                                <input type="range" id="tl-slider" min="0" max="100" value="0" style="width: 100%; cursor: pointer; accent-color: #1890ff;" oninput="window.scrubTimeline()">
+                            </div>
+                        </div>
+
+                        <!-- Legend -->
+                        <div style="position: absolute; top: 20px; right: 20px; z-index: 10; background: rgba(11,26,42,0.85); padding: 15px; border-radius: 8px; border: 1px solid #1f3a53; backdrop-filter: blur(5px);">
+                            <h4 style="margin: 0 0 10px 0; color: white;">Magnitude Legend</h4>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: #52c41a;"></div><span style="color: #ccc; font-size: 13px;">Low (< 4.0)</span></div>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: #faad14;"></div><span style="color: #ccc; font-size: 13px;">Medium (4.0 - 5.9)</span></div>
+                            <div style="display: flex; align-items: center; gap: 10px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: #ff4d4f;"></div><span style="color: #ccc; font-size: 13px;">High (6.0+)</span></div>
+                        </div>
+                    </div>
+                </div>
+                <style>
+                    @keyframes expandFade {
+                        0% { transform: scale(0.5); opacity: 1; }
+                        100% { transform: scale(4); opacity: 0; }
+                    }
+                </style>
+
+                <!-- AI Risk Heatmap Page -->
+                <div id="page-aiheatmap" class="page-section">
+                    <div class="card" style="border: 1px solid #1890ff; box-shadow: 0 0 20px rgba(24, 144, 255, 0.1);">
+                        <div class="card-header" style="background: rgba(24,144,255,0.1); border-bottom: 1px solid #1890ff; display: flex; align-items: center; justify-content: space-between; padding: 20px;">
+                            <h3 style="margin: 0; color: #1890ff; display: flex; align-items: center; gap: 10px;"><i class="fas fa-robot"></i> Advanced Data Risk Modeling</h3>
+                            <div style="display: flex; gap: 5px;">
+                                <button class="btn-primary" onclick="window.runPatternHeatmap('Japan')" style="background: #1890ff; border-color: #1890ff; font-size: 13px;">Japan Focus</button>
+                                <button class="btn-primary" onclick="window.runPatternHeatmap('India')" style="background: #faad14; border-color: #faad14; color: black; font-size: 13px;">India Focus</button>
+                                <button class="btn-primary" onclick="window.runPatternHeatmap()" style="background: #ff4d4f; border-color: #ff4d4f; font-size: 13px;"><i class="fas fa-brain"></i> Global Model</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="dashboard-grid" style="grid-template-columns: 2fr 1fr;">
+                                <div style="height: 500px; position: relative; border-radius: 8px; overflow: hidden; border: 1px solid #333;">
+                                    <div id="aiHeatmapViz" style="width: 100%; height: 100%; background: #0b1a2a; z-index: 1;"></div>
+                                    
+                                    <!-- Embedded Map Legend -->
+                                    <div style="position: absolute; bottom: 20px; left: 20px; z-index: 10; background: rgba(11,26,42,0.85); padding: 15px; border-radius: 8px; border: 1px solid #1f3a53; backdrop-filter: blur(5px);">
+                                        <h4 style="margin: 0 0 10px 0; color: white; font-size: 14px;">7-Day Data Analysis Legend</h4>
+                                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;"><div style="width: 15px; height: 15px; background: green; border-radius: 2px;"></div><span style="color: #ccc; font-size: 12px;">Low Risk Probability</span></div>
+                                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;"><div style="width: 15px; height: 15px; background: yellow; border-radius: 2px;"></div><span style="color: #ccc; font-size: 12px;">Moderate Risk Probability</span></div>
+                                        <div style="display: flex; align-items: center; gap: 10px;"><div style="width: 15px; height: 15px; background: red; border-radius: 2px;"></div><span style="color: #ccc; font-size: 12px;">High Risk Probability</span></div>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <div style="background: #1f3a53; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                                        <h4 style="color: white; margin: 0 0 15px 0; border-bottom: 1px solid #333; padding-bottom: 10px;">Top 5 High-Risk Regions</h4>
+                                        <ul id="top-regions" style="list-style-type: none; padding: 0; margin: 0; color: #aaa; font-size: 14px;">
+                                            <li style="padding: 10px 0; text-align: center; color: #8bb1d4;">Click 'Run Pattern Analysis' to build model.</li>
+                                        </ul>
+                                    </div>
+                                    <div style="background: rgba(255,255,255,0.05); padding: 15px; border-left: 4px solid #faad14; border-radius: 4px;">
+                                        <h4 style="color: white; margin: 0 0 10px 0;">Algorithm Metrics</h4>
+                                        <p style="color: #999; font-size: 12px; line-height: 1.5; margin: 0;">Our estimation groups native historic USGS arrays into geographic zones scaling regional historical frequency metrics against average plate-tectonic depths and median structural magnitudes. Red pixels indicate overlapping fault stresses analyzeing >M5.0 yield within ~7 days.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Medical Support Page -->
+                <!-- Emergency Support Page -->
+                <div id="page-medical" class="page-section">
+                    <h2 style="color: white; margin-bottom: 20px;">Emergency Medical Support System</h2>
+                    
+                    <div class="dashboard-grid" style="grid-template-columns: 2fr 1fr; gap: 20px;">
+                        
+                        <!-- Left Column: Estimator & Map -->
+                        <div style="display: flex; flex-direction: column; gap: 20px;">
+                            
+                            <!-- Medical Resource Estimator Panel -->
+                            <div class="card" style="border: 1px solid #1f3a53;">
+                                <div class="card-header" style="background: rgba(255, 77, 79, 0.1); border-bottom: 1px solid #1f3a53; display: flex; justify-content: space-between;">
+                                    <h3 style="margin: 0; color: #ff4d4f;"><i class="fas fa-calculator"></i> Medical Resource Estimator</h3>
+                                    <div id="severity-indicator" style="padding: 4px 12px; border-radius: 4px; font-weight: bold; background: #52c41a; color: white;">Low Impact</div>
+                                </div>
+                                <div class="card-body">
+                                    <div style="display: flex; gap: 15px; margin-bottom: 20px; align-items: center;">
+                                        <label for="est-mag" style="color: #ccc; font-weight: bold;">Earthquake Magnitude:</label>
+                                        <input type="number" id="est-mag" step="0.1" min="0" max="10" placeholder="e.g. 6.5" style="background: rgba(0,0,0,0.3); border: 1px solid #333; color: white; padding: 8px; border-radius: 4px; width: 100px;">
+                                        <button class="btn-primary" onclick="window.runMedicalEstimation()" style="background: #1890ff; border: none;">Estimate Needs</button>
+                                    </div>
+                                    
+                                    <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 0;">
+                                        <div style="background: #0b1a2a; border: 1px solid #333; padding: 15px; border-radius: 6px; text-align: center;">
+                                            <div style="font-size: 12px; color: #8bb1d4; text-transform: uppercase;">Affected Families</div>
+                                            <div id="est-families" style="font-size: 24px; color: #ff4d4f; font-weight: bold; margin-top: 5px;">0</div>
+                                        </div>
+                                        <div style="background: #0b1a2a; border: 1px solid #333; padding: 15px; border-radius: 6px; text-align: center;">
+                                            <div style="font-size: 12px; color: #8bb1d4; text-transform: uppercase;">Ambulances Required</div>
+                                            <div id="est-ambulances" style="font-size: 24px; color: white; font-weight: bold; margin-top: 5px;">0</div>
+                                        </div>
+                                        <div style="background: #0b1a2a; border: 1px solid #333; padding: 15px; border-radius: 6px; text-align: center;">
+                                            <div style="font-size: 12px; color: #8bb1d4; text-transform: uppercase;">Medical Teams</div>
+                                            <div id="est-teams" style="font-size: 24px; color: white; font-weight: bold; margin-top: 5px;">0</div>
+                                        </div>
+                                        <div style="background: #0b1a2a; border: 1px solid #333; padding: 15px; border-radius: 6px; text-align: center;">
+                                            <div style="font-size: 12px; color: #8bb1d4; text-transform: uppercase;">Temp Shelters</div>
+                                            <div id="est-shelters" style="font-size: 24px; color: white; font-weight: bold; margin-top: 5px;">0</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Help Search Map Container -->
+                            <div class="card" style="border: 1px solid #1f3a53;">
+                                <div class="card-header" style="background: rgba(0,0,0,0.2); border-bottom: 1px solid #1f3a53;">
+                                    <h3 style="margin: 0; color: white;"><i class="fas fa-map-marked-alt"></i> Local Assistance Map</h3>
+                                </div>
+                                <div class="card-body" style="padding: 0; position: relative;">
+                                    <div id="emergency-support-map" style="width: 100%; height: 400px; background: #0b1a2a; z-index: 1;"></div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Right Column: Hotline & Search Bar -->
+                        <div style="display: flex; flex-direction: column; gap: 20px;">
+                            
+                            <!-- Emergency Hotline Panel -->
+                            <div class="card" style="border: 1px solid #ff4d4f; background: rgba(255, 77, 79, 0.05);">
+                                <div class="card-header" style="border-bottom: 1px solid rgba(255, 77, 79, 0.2);">
+                                    <h3 style="margin: 0; color: #ff4d4f;"><i class="fas fa-phone-alt"></i> Emergency Hotlines</h3>
+                                </div>
+                                <div class="card-body">
+                                    <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 15px;">
+                                        <li style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px;">
+                                            <div style="color: white; font-weight: bold;"><i class="fas fa-ambulance" style="width: 25px; color: #ff4d4f;"></i> Ambulance</div>
+                                            <div style="color: #ff4d4f; font-size: 20px; font-weight: bold;">108 / 911</div>
+                                        </li>
+                                        <li style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px;">
+                                            <div style="color: white; font-weight: bold;"><i class="fas fa-shield-alt" style="width: 25px; color: #1890ff;"></i> Disaster Management</div>
+                                            <div style="color: #1890ff; font-size: 20px; font-weight: bold;">1078</div>
+                                        </li>
+                                        <li style="display: flex; justify-content: space-between; align-items: center;">
+                                            <div style="color: white; font-weight: bold;"><i class="fas fa-building" style="width: 25px; color: #faad14;"></i> Local Emergency Svcs</div>
+                                            <div style="color: #faad14; font-size: 20px; font-weight: bold;">112</div>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <!-- Help Search Bar -->
+                            <div class="card" style="border: 1px solid #1f3a53;">
+                                <div class="card-header" style="background: rgba(0,0,0,0.2); border-bottom: 1px solid #1f3a53;">
+                                    <h3 style="margin: 0; color: white;"><i class="fas fa-search-location"></i> Help Search Bar</h3>
+                                    <p style="color: #8bb1d4; font-size: 13px; margin: 5px 0 0 0;">Search nearby assistance categories.</p>
+                                </div>
+                                <div class="card-body">
+                                    <div style="display: flex; flex-direction: column; gap: 15px;">
+                                        <div class="search-box" style="width: 100%; border: 1px solid #333; border-radius: 4px;">
+                                            <i class="fas fa-search" style="margin-left: 10px; color: #1890ff;"></i>
+                                            <input type="text" id="help-search-box" placeholder="e.g. Hospitals near me..." style="width: 100%; border: none;">
+                                        </div>
+                                        
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                                            <button class="btn-default" onclick="window.searchEmergencyHelp('Hospitals')" style="background: rgba(255, 77, 79, 0.1); border-color: #ff4d4f; color: white;"><i class="fas fa-hospital"></i> Hospitals</button>
+                                            <button class="btn-default" onclick="window.searchEmergencyHelp('Emergency shelters')" style="background: rgba(250, 173, 20, 0.1); border-color: #faad14; color: white;"><i class="fas fa-campground"></i> Shelters</button>
+                                            <button class="btn-default" onclick="window.searchEmergencyHelp('Medical camps')" style="background: rgba(19, 194, 194, 0.1); border-color: #13c2c2; color: white;"><i class="fas fa-first-aid"></i> Med Camps</button>
+                                            <button class="btn-default" onclick="window.searchEmergencyHelp('Food support')" style="background: rgba(82, 196, 26, 0.1); border-color: #52c41a; color: white;"><i class="fas fa-utensils"></i> Food Support</button>
+                                            <button class="btn-default" onclick="window.searchEmergencyHelp('Rescue teams')" style="background: rgba(24, 144, 255, 0.1); border-color: #1890ff; color: white; grid-column: 1 / -1;"><i class="fas fa-helicopter"></i> Rescue Teams</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rescue Operations Page -->
+                <div id="page-rescue" class="page-section">
+                    <h2 style="color: white; margin-bottom: 20px;">Rescue & Evacuation Support System</h2>
+                    
+                    <!-- Top Dashboard -->
+                    <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px;">
+                        <div class="stat-card" style="border-left: 4px solid #1890ff;">
+                            <h3 style="margin: 0; color: #ccc; font-size: 13px; text-transform: uppercase;">Total Rescue Teams Deployed</h3>
+                            <h2 id="resc-total-teams" style="color: #1890ff; margin: 10px 0 0 0; font-size: 36px;">--</h2>
+                        </div>
+                        <div class="stat-card" style="border-left: 4px solid #ff4d4f;">
+                            <h3 style="margin: 0; color: #ccc; font-size: 13px; text-transform: uppercase;">Active Emergency Zones</h3>
+                            <h2 id="resc-active-zones" style="color: #ff4d4f; margin: 10px 0 0 0; font-size: 36px;">--</h2>
+                        </div>
+                        <div class="stat-card" style="border-left: 4px solid #52c41a;">
+                            <h3 style="margin: 0; color: #ccc; font-size: 13px; text-transform: uppercase;">Available Shelters</h3>
+                            <h2 id="resc-avail-shelters" style="color: #52c41a; margin: 10px 0 0 0; font-size: 36px;">8,450</h2>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid" style="grid-template-columns: 1fr 2fr; gap: 20px;">
+                        
+                        <!-- Left Panel: Deployments & Route Inputs -->
+                        <div style="display: flex; flex-direction: column; gap: 20px;">
+
+                            <!-- Rescue Team Deployment Panel -->
+                            <div class="card" style="border: 1px solid #1f3a53;">
+                                <div class="card-header" style="background: rgba(24, 144, 255, 0.1); border-bottom: 1px solid #1f3a53;">
+                                    <h3 style="margin: 0; color: #1890ff;"><i class="fas fa-helicopter"></i> Rescue Team Deployment</h3>
+                                    <p style="color: #8bb1d4; font-size: 12px; margin: 5px 0 0 0;">Auto-estimates requirements for events >= M5.5</p>
+                                </div>
+                                <div class="card-body">
+                                    <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center;">
+                                        <input type="number" id="rescue-mag-input" step="0.1" min="0" max="10" placeholder="Mag (e.g. 6.5)" style="background: rgba(0,0,0,0.3); border: 1px solid #333; color: white; padding: 8px; border-radius: 4px; width: 100px;">
+                                        <button class="btn-primary" onclick="window.calculateRescueNeeds()" style="background: #1890ff; border: none; width: 100%;">Estimate Deployment</button>
+                                    </div>
+                                    <div style="background: #0b1a2a; border: 1px solid #333; border-radius: 6px; padding: 15px;">
+                                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px;">
+                                            <span style="color: #ccc;">Rescue Teams Req:</span>
+                                            <strong id="req-rescue-teams" style="color: #1890ff; font-size: 16px;">0</strong>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px;">
+                                            <span style="color: #ccc;">Ambulances Req:</span>
+                                            <strong id="req-ambulances" style="color: #ff4d4f; font-size: 16px;">0</strong>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between;">
+                                            <span style="color: #ccc;">Support Vehicles:</span>
+                                            <strong id="req-support-vehs" style="color: #faad14; font-size: 16px;">0</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Evacuation Route Finder -->
+                            <div class="card" style="border: 1px solid #1f3a53;">
+                                <div class="card-header" style="background: rgba(82, 196, 26, 0.1); border-bottom: 1px solid #1f3a53;">
+                                    <h3 style="margin: 0; color: #52c41a;"><i class="fas fa-route"></i> Safe Evacuation Route Finder</h3>
+                                </div>
+                                <div class="card-body">
+                                    <p style="color: #8bb1d4; font-size: 13px; margin: 0 0 15px 0;">Enter your location to find the safest route to emergency facilities.</p>
+                                    
+                                    <div class="search-box" style="width: 100%; border: 1px solid #333; border-radius: 4px; margin-bottom: 15px; background: rgba(0,0,0,0.3);">
+                                        <i class="fas fa-map-marker-alt" style="margin-left: 10px; color: #52c41a;"></i>
+                                        <input type="text" id="evac-location-input" placeholder="Current location (e.g., Tokyo)" style="width: 100%; border: none; padding: 10px 10px 10px 35px; color: white; background: transparent;">
+                                    </div>
+                                    
+                                    <label style="color: #ccc; font-size: 12px; display: block; margin-bottom: 5px;">Route Destination Type:</label>
+                                    <select id="evac-destination-type" style="width: 100%; background: #0b1a2a; color: white; border: 1px solid #333; padding: 8px; border-radius: 4px; margin-bottom: 15px;">
+                                        <option value="Hospitals">Nearest Hospital</option>
+                                        <option value="Emergency Shelters">Emergency Shelter</option>
+                                        <option value="Relief Camps">Relief Camp</option>
+                                    </select>
+                                    
+                                    <button class="btn-primary" onclick="window.findEvacuationRoute()" style="background: #52c41a; border: none; width: 100%; font-weight: bold; padding: 10px;"><i class="fas fa-directions"></i> Find Safe Route</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Panel: Evacuation Map -->
+                        <div class="card" style="border: 1px solid #1f3a53;">
+                            <div class="card-header" style="background: rgba(0,0,0,0.2); border-bottom: 1px solid #1f3a53; display: flex; justify-content: space-between;">
+                                <h3 style="margin: 0; color: white;"><i class="fas fa-map-marked-alt"></i> Route & Facilities Map</h3>
+                                <div style="display: flex; gap: 10px; font-size: 12px; color: #8bb1d4;">
+                                    <span><i class="fas fa-hospital" style="color: #ff4d4f;"></i> Hospitals</span>
+                                    <span><i class="fas fa-campground" style="color: #faad14;"></i> Shelters</span>
+                                    <span><i class="fas fa-utensils" style="color: #13c2c2;"></i> Food Centers</span>
+                                    <span><i class="fas fa-helicopter" style="color: #1890ff;"></i> Command Centers</span>
+                                </div>
+                            </div>
+                            <div class="card-body" style="padding: 0; position: relative;">
+                                <div id="evacuation-map" style="width: 100%; height: 500px; background: #0b1a2a; z-index: 1;"></div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- SOS Help Center Page -->
+                <div id="page-sos" class="page-section">
+                    <h2 style="color: white; margin-bottom: 20px;">Public Emergency SOS System</h2>
+                    
+                    <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px;">
+                        <div class="stat-card" style="border-left: 4px solid #ff4d4f;">
+                            <h3 style="margin: 0; color: #ccc; font-size: 13px; text-transform: uppercase;">Total SOS Requests</h3>
+                            <h2 id="sos-total" style="color: #ff4d4f; margin: 10px 0 0 0; font-size: 36px;">0</h2>
+                        </div>
+                        <div class="stat-card" style="border-left: 4px solid #52c41a;">
+                            <h3 style="margin: 0; color: #ccc; font-size: 13px; text-transform: uppercase;">Resolved Requests</h3>
+                            <h2 id="sos-resolved" style="color: #52c41a; margin: 10px 0 0 0; font-size: 36px;">0</h2>
+                        </div>
+                        <div class="stat-card" style="border-left: 4px solid #faad14;">
+                            <h3 style="margin: 0; color: #ccc; font-size: 13px; text-transform: uppercase;">Active Emergency Requests</h3>
+                            <h2 id="sos-active" style="color: #faad14; margin: 10px 0 0 0; font-size: 36px;">0</h2>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid" style="grid-template-columns: 1fr 2fr; gap: 20px;">
+                        
+                        <!-- SOS Form Panel -->
+                        <div class="card" style="border: 1px solid #ff4d4f;">
+                            <div class="card-header" style="background: rgba(255, 77, 79, 0.1); border-bottom: 1px solid #ff4d4f;">
+                                <h3 style="margin: 0; color: #ff4d4f;"><i class="fas fa-exclamation-circle"></i> Request Emergency Help</h3>
+                            </div>
+                            <div class="card-body">
+                                <div style="display: flex; flex-direction: column; gap: 15px;">
+                                    <div>
+                                        <label style="color: #ccc; font-size: 12px; margin-bottom: 5px; display: block;">Full Name:</label>
+                                        <input type="text" id="sos-name" placeholder="John Doe" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #333; background: rgba(0,0,0,0.3); color: white;">
+                                    </div>
+                                    <div>
+                                        <label style="color: #ccc; font-size: 12px; margin-bottom: 5px; display: block;">Phone Number:</label>
+                                        <input type="text" id="sos-phone" placeholder="+1 (555) 000-0000" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #333; background: rgba(0,0,0,0.3); color: white;">
+                                    </div>
+                                    <div>
+                                        <label style="color: #ccc; font-size: 12px; margin-bottom: 5px; display: block;">Location (City, Area, Address):</label>
+                                        <input type="text" id="sos-location" placeholder="e.g. Kyoto, Japan" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #333; background: rgba(0,0,0,0.3); color: white;">
+                                    </div>
+                                    <div>
+                                        <label style="color: #ccc; font-size: 12px; margin-bottom: 5px; display: block;">Type of Help Needed:</label>
+                                        <select id="sos-type" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #333; background: #0b1a2a; color: white;">
+                                            <option value="Medical emergency">Medical emergency</option>
+                                            <option value="Rescue assistance">Rescue assistance</option>
+                                            <option value="Food and water">Food and water</option>
+                                            <option value="Temporary shelter">Temporary shelter</option>
+                                        </select>
+                                    </div>
+                                    <button class="btn-primary" onclick="window.submitSOSRequest()" style="background: #ff4d4f; border: none; font-size: 18px; font-weight: bold; height: 50px; margin-top: 10px;"><i class="fas fa-broadcast-tower"></i> SEND SOS</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SOS Map Panel -->
+                        <div class="card" style="border: 1px solid #1f3a53;">
+                            <div class="card-header" style="background: rgba(0,0,0,0.2); border-bottom: 1px solid #1f3a53; display: flex; justify-content: space-between; align-items: center;">
+                                <h3 style="margin: 0; color: white;"><i class="fas fa-map-marked-alt"></i> Active SOS Signals Map</h3>
+                                <div style="display: flex; gap: 5px;" id="sos-filters">
+                                    <button onclick="window.filterSOS('All')" style="padding: 4px 8px; background: rgba(255,255,255,0.2); border: 1px solid #fff; color: white; border-radius: 4px; cursor: pointer;">All</button>
+                                    <button onclick="window.filterSOS('Medical emergency')" style="padding: 4px 8px; background: rgba(255, 77, 79, 0.1); border: 1px solid #ff4d4f; color: #ff4d4f; border-radius: 4px; cursor: pointer;">Medical</button>
+                                    <button onclick="window.filterSOS('Rescue assistance')" style="padding: 4px 8px; background: rgba(24, 144, 255, 0.1); border: 1px solid #1890ff; color: #1890ff; border-radius: 4px; cursor: pointer;">Rescue</button>
+                                    <button onclick="window.filterSOS('Temporary shelter')" style="padding: 4px 8px; background: rgba(250, 173, 20, 0.1); border: 1px solid #faad14; color: #faad14; border-radius: 4px; cursor: pointer;">Shelter</button>
+                                    <button onclick="window.filterSOS('Food and water')" style="padding: 4px 8px; background: rgba(82, 196, 26, 0.1); border: 1px solid #52c41a; color: #52c41a; border-radius: 4px; cursor: pointer;">Food</button>
+                                </div>
+                            </div>
+                            <div class="card-body" style="padding: 0; position: relative;">
+                                <div id="sos-map" style="width: 100%; height: 500px; background: #0b1a2a; z-index: 1;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Control Center Page -->
+                <div id="page-control" class="page-section">
+                    
+                    <!-- Alert Ticker -->
+                    <div style="background: #cf1322; color: white; padding: 10px; font-weight: bold; border-radius: 4px; margin-bottom: 20px; display: flex; align-items: center; box-shadow: 0 0 10px rgba(207, 19, 34, 0.5);">
+                        <i class="fas fa-broadcast-tower" style="margin-right: 15px; animation: pulseRed 1s infinite;"></i>
+                        <marquee id="control-ticker" scrollamount="6" style="flex-grow: 1;">Initializing live global disaster feeds...</marquee>
+                    </div>
+
+                    <!-- Top Metrics Row -->
+                    <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px;">
+                        <div class="stat-card" style="border-top: 3px solid #ff4d4f; padding: 15px; text-align: center;">
+                            <h3 style="margin: 0; color: #ccc; font-size: 12px; text-transform: uppercase;">EQ Today</h3>
+                            <h2 id="control-stat-eq" style="color: #ff4d4f; margin: 5px 0 0 0; font-size: 24px;">0</h2>
+                        </div>
+                        <div class="stat-card" style="border-top: 3px solid #cf1322; padding: 15px; text-align: center;">
+                            <h3 style="margin: 0; color: #ccc; font-size: 12px; text-transform: uppercase;">Major EQ (>5M)</h3>
+                            <h2 id="control-stat-major" style="color: #cf1322; margin: 5px 0 0 0; font-size: 24px;">0</h2>
+                        </div>
+                        <div class="stat-card" style="border-top: 3px solid #1890ff; padding: 15px; text-align: center;">
+                            <h3 style="margin: 0; color: #ccc; font-size: 12px; text-transform: uppercase;">Active Tsunami Alerts</h3>
+                            <h2 id="control-stat-tsunami" style="color: #1890ff; margin: 5px 0 0 0; font-size: 24px;">0</h2>
+                        </div>
+                        <div class="stat-card" style="border-top: 3px solid #722ed1; padding: 15px; text-align: center;">
+                            <h3 style="margin: 0; color: #ccc; font-size: 12px; text-transform: uppercase;">Active SOS Requests</h3>
+                            <h2 id="control-stat-sos" style="color: #722ed1; margin: 5px 0 0 0; font-size: 24px;">0</h2>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+                        <!-- Large Map Container -->
+                        <div class="card" style="padding: 0; overflow: hidden; border: 1px solid #1f3a53; position: relative;">
+                            <div class="card-header" style="background: rgba(0,0,0,0.3); border-bottom: 1px solid #1f3a53; padding: 10px 15px;">
+                                <h3 style="margin: 0; color: white; font-size: 14px;"><i class="fas fa-globe"></i> Global Threat Map</h3>
+                            </div>
+                            <!-- Map container -->
+                            <div id="control-map" style="height: 600px; width: 100%; background: #0b1a2a; z-index: 1;"></div>
+                            
+                            <!-- Legend inside map -->
+                            <div style="position: absolute; bottom: 30px; left: 30px; background: rgba(11,26,42,0.8); padding: 15px; border-radius: 8px; border: 1px solid #1f3a53; z-index: 1000; box-shadow: 0 5px 15px rgba(0,0,0,0.5);">
+                                <h4 style="margin: 0 0 10px 0; color: white; font-size: 12px; border-bottom: 1px solid #333; padding-bottom: 5px;">Threat Legend</h4>
+                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: #ff4d4f; border: 1px solid white;"></div><span style="color: #ccc; font-size: 12px;">Earthquakes</span></div>
+                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: #1890ff; border: 1px solid white;"></div><span style="color: #ccc; font-size: 12px;">Tsunami Alerts</span></div>
+                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: #faad14; border: 1px solid white;"></div><span style="color: #ccc; font-size: 12px;">Volcano Activity</span></div>
+                                <div style="display: flex; align-items: center; gap: 8px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: #722ed1; border: 1px solid white;"></div><span style="color: #ccc; font-size: 12px;">SOS Requests</span></div>
+                            </div>
+                        </div>
+
+                        <!-- Side Panels -->
+                        <div style="display: flex; flex-direction: column; gap: 20px;">
+                            
+                            <!-- Graph Card -->
+                            <div class="card" style="border: 1px solid #1f3a53;">
+                                <div class="card-header" style="background: rgba(0,0,0,0.3); border-bottom: 1px solid #1f3a53; padding: 10px 15px;">
+                                    <h3 style="margin: 0; color: white; font-size: 14px;"><i class="fas fa-chart-bar"></i> Regional Activity</h3>
+                                </div>
+                                <div class="card-body" style="padding: 15px; height: 260px; position: relative;">
+                                    <canvas id="control-region-chart"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Quick-response panel -->
+                            <div class="card" style="border: 1px solid #1f3a53; flex-grow: 1;">
+                                <div class="card-header" style="background: rgba(0,0,0,0.3); border-bottom: 1px solid #1f3a53; padding: 10px 15px;">
+                                    <h3 style="margin: 0; color: white; font-size: 14px;"><i class="fas fa-truck-medical"></i> Quick Response Assets</h3>
+                                </div>
+                                <div class="card-body" style="padding: 15px;">
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 15px;">
+                                        <div style="display: flex; align-items: center; gap: 10px;"><i class="fas fa-user-doctor" style="color: #ff4d4f; font-size: 20px;"></i><span style="color: #ccc;">Medical Teams</span></div>
+                                        <div style="font-weight: bold; color: white; font-size: 20px;" id="qr-medical">42</div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 15px;">
+                                        <div style="display: flex; align-items: center; gap: 10px;"><i class="fas fa-helicopter" style="color: #1890ff; font-size: 20px;"></i><span style="color: #ccc;">Rescue Teams</span></div>
+                                        <div style="font-weight: bold; color: white; font-size: 20px;" id="qr-rescue">14</div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 15px;">
+                                        <div style="display: flex; align-items: center; gap: 10px;"><i class="fas fa-campground" style="color: #faad14; font-size: 20px;"></i><span style="color: #ccc;">Shelters Open</span></div>
+                                        <div style="font-weight: bold; color: white; font-size: 20px;" id="qr-shelter">89</div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <div style="display: flex; align-items: center; gap: 10px;"><i class="fas fa-route" style="color: #52c41a; font-size: 20px;"></i><span style="color: #ccc;">Evac Routes</span></div>
+                                        <div style="font-weight: bold; color: white; font-size: 20px;" id="qr-evac">3</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Disaster Impact Estimator Page -->
+                <div id="page-impact" class="page-section">
+                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px;">
+                        
+                        <!-- Input Panel -->
+                        <div class="glass-card" style="height: fit-content;">
+                            <div class="glass-header">
+                                <h3 style="margin: 0; color: white; display: flex; align-items: center; gap: 10px; font-size: 16px;">
+                                    <i class="fas fa-microchip" style="color: #1890ff;"></i> <span class="text-gradient-primary">Impact Estimator</span>
+                                </h3>
+                            </div>
+                            <div class="glass-body">
+                                <div style="margin-bottom: 20px;">
+                                    <label class="glass-label">Earthquake Magnitude (1.0 - 10.0)</label>
+                                    <input type="number" id="impact-mag" value="6.5" step="0.1" min="1.0" max="10.0" class="glass-input">
+                                </div>
+                                <div style="margin-bottom: 20px;">
+                                    <label class="glass-label">Depth (km)</label>
+                                    <input type="number" id="impact-depth" value="10" step="1" min="0" max="700" class="glass-input">
+                                </div>
+                                <div style="margin-bottom: 20px;">
+                                    <label class="glass-label">Population Density (people/km²)</label>
+                                    <input type="number" id="impact-pop" value="5000" step="100" min="0" class="glass-input">
+                                </div>
+                                <div style="margin-bottom: 30px;">
+                                    <label class="glass-label">Distance to Nearest City (km)</label>
+                                    <input type="number" id="impact-dist" value="15" step="1" min="0" class="glass-input">
+                                </div>
+                                <button onclick="window.calculateImpact()" class="btn-glow" style="width: 100%;">
+                                    <i class="fas fa-brain" style="margin-right: 8px;"></i> Estimate Impact
+                                </button>
+
+                                <div style="margin-top: 30px; padding: 20px; background: rgba(24,144,255,0.05); border-left: 3px solid #1890ff; border-radius: 8px; font-size: 13px; color: rgba(255,255,255,0.65); line-height: 1.6;">
+                                    <strong style="color: #1890ff;">HOW IT WORKS:</strong> Our ML model estimates regional damage probabilities by assessing shockwave propagation, hypocenter depth dampening, and grid density overlays to calculate precise medical and structural triage requirements ahead of official on-ground assessments.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Output Dashboard -->
+                        <div style="display: flex; flex-direction: column; gap: 24px;">
+                            
+                            <!-- Risk Indicator -->
+                            <div class="glass-card" style="padding: 32px; display: flex; align-items: center; justify-content: space-between;">
+                                <div>
+                                    <h2 style="margin: 0; color: white; font-size: 24px; font-weight: 600;">Estimated Threat Level</h2>
+                                    <p style="color: rgba(255,255,255,0.45); margin: 8px 0 0 0; font-size: 14px;">Synthesized severity mapping.</p>
+                                </div>
+                                <div id="impact-risk-badge" style="padding: 12px 48px; background: rgba(82, 196, 26, 0.1); border: 1px solid rgba(82,196,26,0.3); color: #52c41a; font-size: 28px; font-weight: 700; border-radius: 12px; text-transform: uppercase; box-shadow: 0 0 20px rgba(82,196,26,0.2);">
+                                    STANDBY
+                                </div>
+                            </div>
+
+                            <!-- Metrics Row -->
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;">
+                                <div class="stat-box">
+                                    <i class="fas fa-users stat-box-icon" style="color: #cf1322;"></i>
+                                    <h4 class="stat-box-title">Affected Population</h4>
+                                    <h2 id="impact-out-pop" class="stat-box-value">--</h2>
+                                </div>
+                                <div class="stat-box">
+                                    <i class="fas fa-user-injured stat-box-icon" style="color: #faad14;"></i>
+                                    <h4 class="stat-box-title">Est. Casualties</h4>
+                                    <h2 id="impact-out-cas" class="stat-box-value">--</h2>
+                                </div>
+                                <div class="stat-box">
+                                    <i class="fas fa-building-circle-exclamation stat-box-icon" style="color: #ff4d4f;"></i>
+                                    <h4 class="stat-box-title">Severe Bldg Damage</h4>
+                                    <h2 id="impact-out-bldg" class="stat-box-value">--</h2>
+                                </div>
+                            </div>
+
+                            <!-- Visual Dashboard & Resources -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                                <!-- Chart -->
+                                <div class="glass-card">
+                                    <div class="glass-header" style="border-bottom: none; padding-bottom: 0;">
+                                        <h3 style="margin: 0; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Damage Probability</h3>
+                                    </div>
+                                    <div class="glass-body" style="padding-top: 15px;">
+                                        <div style="height: 220px; position: relative;">
+                                            <canvas id="impact-chart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Required Resources -->
+                                <div class="glass-card">
+                                    <div class="glass-header" style="border-bottom: none; padding-bottom: 0;">
+                                        <h3 style="margin: 0; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Required Resources</h3>
+                                    </div>
+                                    <div class="glass-body" style="display: flex; flex-direction: column; justify-content: center; gap: 20px;">
+                                        
+                                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 20px; background: rgba(24, 144, 255, 0.05); border: 1px solid rgba(24, 144, 255, 0.2); border-radius: 12px; transition: all 0.3s ease;">
+                                            <div style="display: flex; align-items: center; gap: 16px;">
+                                                <i class="fas fa-helicopter" style="font-size: 28px; color: #1890ff;"></i>
+                                                <span style="color: white; font-weight: 600; font-size: 16px;">Rescue Teams</span>
+                                            </div>
+                                            <h2 id="impact-req-rescue" style="margin: 0; color: #1890ff; font-size: 28px;">--</h2>
+                                        </div>
+                                        
+                                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 20px; background: rgba(255, 77, 79, 0.05); border: 1px solid rgba(255, 77, 79, 0.2); border-radius: 12px; transition: all 0.3s ease;">
+                                            <div style="display: flex; align-items: center; gap: 16px;">
+                                                <i class="fas fa-user-doctor" style="font-size: 28px; color: #ff4d4f;"></i>
+                                                <span style="color: white; font-weight: 600; font-size: 16px;">Medical Teams</span>
+                                            </div>
+                                            <h2 id="impact-req-med" style="margin: 0; color: #ff4d4f; font-size: 28px;">--</h2>
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Community Disaster Support System Page -->
+                <div id="page-community" class="page-section">
+                    <h2 style="color: white; margin-bottom: 24px; font-weight: 700; font-size: 28px; display: flex; align-items: center;">
+                        <i class="fas fa-hands-helping" style="color: #52c41a; margin-right: 12px; text-shadow: 0 0 15px rgba(82, 196, 26, 0.5);"></i> 
+                        <span class="text-gradient-success">Community Disaster Support System</span>
+                    </h2>
+                    
+                    <!-- Mobile Emergency Mode Ribbon (Hidden on desktop, shown on mobile) -->
+                    <div class="mobile-emergency-grid" style="display: none; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px;">
+                        <button class="btn-glow btn-glow-danger" onclick="alert('SOS SENT TO AUTHORITIES!')" style="height: 90px; font-size: 18px;">
+                            <i class="fas fa-satellite-dish" style="font-size: 28px; display: block; margin-bottom: 8px;"></i> SEND SOS
+                        </button>
+                        <button class="btn-glow btn-glow-danger" onclick="document.getElementById('comm-search-type').value='hospital'; window.findSafeZones();" style="height: 90px; font-size: 16px;">
+                            <i class="fas fa-hospital" style="font-size: 28px; display: block; margin-bottom: 8px;"></i> HOSPITAL
+                        </button>
+                        <button class="btn-glow btn-glow-warning" onclick="document.getElementById('comm-search-type').value='shelter'; window.findSafeZones();" style="height: 90px; font-size: 16px;">
+                            <i class="fas fa-campground" style="font-size: 28px; display: block; margin-bottom: 8px;"></i> SHELTER
+                        </button>
+                        <button class="btn-glow" onclick="document.querySelector('.nav-item[data-page=sos]').click()" style="height: 90px; font-size: 16px;">
+                            <i class="fas fa-bell" style="font-size: 28px; display: block; margin-bottom: 8px;"></i> ALERTS
+                        </button>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+                        
+                        <!-- Map View (Safe Zones, Rescue, Heatmap) -->
+                        <div class="glass-card" style="padding: 0; position: relative;">
+                            <div class="glass-header" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 20px !important;">
+                                <h3 style="margin: 0; color: white; font-size: 15px; font-weight: 600; letter-spacing: 0.5px;">
+                                    <i class="fas fa-map-marked-alt" style="color: #1890ff; margin-right: 8px;"></i> Tactical Rescue & Safety Map
+                                </h3>
+                                <div style="display: flex; gap: 12px;">
+                                    <button class="btn-glow btn-glow-danger" onclick="window.toggleCommHeatmap()" style="padding: 6px 12px !important; font-size: 11px; border-radius: 6px !important; box-shadow: none !important;">Toggle Heatmap</button>
+                                    <button class="btn-glow" onclick="window.fetchLiveRescueTeams()" style="padding: 6px 12px !important; font-size: 11px; border-radius: 6px !important; box-shadow: none !important;">Refresh Teams</button>
+                                </div>
+                            </div>
+                            <!-- Search overlay -->
+                            <div style="position: absolute; top: 75px; left: 20px; z-index: 1000; background: rgba(11, 26, 42, 0.75); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); padding: 20px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 8px 32px rgba(0,0,0,0.5); width: 320px; transition: all 0.3s ease;">
+                                <label class="glass-label">Safe Zone Finder</label>
+                                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                                    <input type="text" id="comm-loc-input" placeholder="Your Location..." class="glass-input">
+                                    <button onclick="document.getElementById('comm-loc-input').value = navigator.geolocation ? 'Detecting...' : 'Tokyo'; if(navigator.geolocation) {navigator.geolocation.getCurrentPosition(p=>document.getElementById('comm-loc-input').value=p.coords.latitude.toFixed(2)+','+p.coords.longitude.toFixed(2))}" class="btn-glow" style="padding: 0 16px !important;" title="Use Device Location">
+                                        <i class="fas fa-crosshairs"></i>
+                                    </button>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <select id="comm-search-type" class="glass-input" style="cursor: pointer;">
+                                        <option value="hospital" style="background: #0b1a2a;">🏥 Hospitals</option>
+                                        <option value="shelter" style="background: #0b1a2a;">⛺ Emergency Shelters</option>
+                                        <option value="camp" style="background: #0b1a2a;">🏕️ Relief Camps</option>
+                                        <option value="open" style="background: #0b1a2a;">🏞️ Safe Open Areas</option>
+                                    </select>
+                                    <button class="btn-glow btn-glow-success" onclick="window.findSafeZones()" style="padding: 0 16px !important;">Find</button>
+                                </div>
+                            </div>
+                            <div id="community-map" style="width: 100%; height: 600px; background: #0b1a2a; z-index: 1;"></div>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 24px;">
+                            <!-- Active Operations Tracker Widget -->
+                            <div class="glass-card">
+                                <div class="glass-header" style="background: rgba(24, 144, 255, 0.1) !important; border-bottom: 1px solid rgba(24, 144, 255, 0.3) !important;">
+                                    <h3 style="margin: 0; color: #1890ff; display: flex; align-items: center; justify-content: space-between; font-size: 15px; text-transform: uppercase;">
+                                        <span><i class="fas fa-helicopter" style="margin-right: 8px;"></i> Rescue Ops</span>
+                                        <span id="comm-active-ops" style="background: linear-gradient(135deg, #1890ff, #0050b3); color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; box-shadow: 0 2px 8px rgba(24, 144, 255, 0.4);">14 Active</span>
+                                    </h3>
+                                </div>
+                                <div class="glass-body" style="max-height: 250px; overflow-y: auto; overflow-x: hidden; padding: 0 !important;">
+                                    <ul id="comm-rescue-list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column;">
+                                        <!-- Dynamically Populated via JS -->
+                                        <li class="premium-list-item" style="color: rgba(255,255,255,0.45); font-size: 13px; justify-content: center; font-style: italic;">Standby for operation sync...</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <!-- Safety Guide -->
+                            <div class="glass-card" style="flex-grow: 1;">
+                                <div class="glass-header" style="background: rgba(250, 173, 20, 0.1) !important; border-bottom: 1px solid rgba(250, 173, 20, 0.3) !important;">
+                                    <h3 style="margin: 0; font-size: 15px; text-transform: uppercase;"><i class="fas fa-book-medical" style="margin-right: 8px; color: #faad14;"></i> <span class="text-gradient-warning">Safety Guide</span></h3>
+                                </div>
+                                <div class="glass-body safety-details">
+                                    <details open>
+                                        <summary style="font-weight: 600; color: white; cursor: pointer;">🔥 During an Earthquake</summary>
+                                        <ul style="color: rgba(255,255,255,0.65); font-size: 13px; padding-left: 20px; padding-top: 10px; margin-bottom: 10px;">
+                                            <li><strong>Drop</strong> to your hands and knees.</li>
+                                            <li><strong>Cover</strong> your head and neck under a sturdy desk.</li>
+                                            <li><strong>Hold On</strong> to your shelter until shaking stops.</li>
+                                            <li>Stay away from glass and outside doors.</li>
+                                        </ul>
+                                    </details>
+                                    <details>
+                                        <summary style="font-weight: 600; color: white; cursor: pointer;">⚠️ After an Earthquake</summary>
+                                        <ul style="color: rgba(255,255,255,0.65); font-size: 13px; padding-left: 20px; padding-top: 10px; margin-bottom: 10px;">
+                                            <li>Expect aftershocks. Drop, Cover, and Hold On.</li>
+                                            <li>Check for injuries and get first aid.</li>
+                                            <li>If inside a damaged building, evacuate quickly.</li>
+                                            <li>Use texts instead of calls to keep lines clear.</li>
+                                        </ul>
+                                    </details>
+                                    <details>
+                                        <summary style="font-weight: 600; color: white; cursor: pointer;">🛡️ Be Prepared (Before)</summary>
+                                        <ul style="color: rgba(255,255,255,0.65); font-size: 13px; padding-left: 20px; padding-top: 10px; margin-bottom: 0;">
+                                            <li>Secure heavy items to walls.</li>
+                                            <li>Create an emergency communications plan.</li>
+                                            <li>Prepare a 72-hour supply kit.</li>
+                                        </ul>
+                                    </details>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Russia Monitor Page -->
+                <div id="page-russia" class="page-section">
+                    <div class="glass-header" style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid rgba(245,34,45,0.3); background: rgba(245,34,45,0.05); margin-bottom: 24px; border-radius: 12px;">
+                        <h2 style="color: white; margin: 0; display: flex; align-items: center;"><i class="fas fa-flag" style="color: #f5222d; margin-right: 12px; text-shadow: 0 0 15px rgba(245, 34, 45, 0.5);"></i> <span style="background: linear-gradient(90deg, #f5222d, #ffa39e); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Russian Federation Seismic Network</span></h2>
+                        <span id="russia-eq-count" style="background: rgba(245,34,45,0.2); padding: 5px 15px; border-radius: 20px; color: #ffa39e; font-weight: bold; font-size: 14px; border: 1px solid rgba(245,34,45,0.4);">Integrating Data...</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+                        <div class="glass-card" style="padding: 0; position: relative; border: 1px solid rgba(245,34,45,0.2);">
+                            <div id="russia-map" style="width: 100%; height: 600px; background: #0b1a2a; border-radius: 12px;"></div>
+                        </div>
+                        <div class="glass-card" style="border: 1px solid rgba(245,34,45,0.2); overflow-y: auto; max-height: 600px;">
+                            <h3 style="color: #ffa39e; border-bottom: 1px solid rgba(245,34,45,0.3); padding-bottom: 10px; margin-top: 0;"><i class="fas fa-list"></i> Regional Events Map</h3>
+                            <ul id="russia-eq-list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px;">
+                                <li style="color: rgba(255,255,255,0.45); font-style: italic;">Awaiting local seismic data sync...</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- QuakeBot Page -->
+                <div id="page-quakebot" class="page-section">
+                    <div style="max-width: 800px; margin: 0 auto;">
+                        <div class="glass-card" style="padding: 0; display: flex; flex-direction: column; height: 75vh; border: 1px solid rgba(114,46,209,0.3);">
+                            <div class="glass-header" style="background: rgba(114,46,209,0.1); border-bottom: 1px solid rgba(114,46,209,0.2); text-align: center; padding: 15px;">
+                                <h2 style="margin: 0; color: white; display: flex; align-items: center; justify-content: center;"><i class="fas fa-robot" style="color: #b37feb; margin-right: 12px; font-size: 28px; text-shadow: 0 0 15px rgba(114,46,209,0.8);"></i> <span style="background: linear-gradient(90deg, #b37feb, #d3adf7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700;">Quake Safety Assistant</span></h2>
+                                <p style="color: rgba(255,255,255,0.5); font-size: 13px; margin: 5px 0 0 0;">Ask me anything about disaster preparation, structural safety, or survival protocols.</p>
+                            </div>
+                            <div id="quakebot-chat-window" class="glass-body" style="flex-grow: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px;">
+                                <!-- Bot introductory message -->
+                                <div style="align-self: flex-start; background: rgba(114,46,209,0.15); border: 1px solid rgba(114,46,209,0.3); padding: 12px 18px; border-radius: 12px; border-top-left-radius: 2px; max-width: 80%; color: rgba(255,255,255,0.85); line-height: 1.5;">
+                                    Hello! I am QuakeBot. How can I help you prepare for seismic events today? Try asking about emergency kits or safe structural zones.
+                                </div>
+                            </div>
+                            <div style="padding: 15px; border-top: 1px solid rgba(114,46,209,0.2); background: rgba(0,0,0,0.2); display: flex; gap: 10px;">
+                                <input type="text" id="quakebot-input" class="glass-input" placeholder="Type your disaster preparedness question here..." style="flex-grow: 1; border-color: rgba(114,46,209,0.4);" onkeypress="if(event.key === 'Enter') window.sendQuakeBotMessage()">
+                                <button class="btn-glow" style="background: rgba(114,46,209,0.2); color: #d3adf7; box-shadow: 0 0 15px rgba(114,46,209,0.2);" onclick="window.sendQuakeBotMessage()"><i class="fas fa-paper-plane"></i> Send</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Libraries from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+    <script src="https://unpkg.com/three"></script>
+    <script src="https://unpkg.com/globe.gl"></script>
+    <script src="script.js?v=2"></script>
+
+    <!-- Real Data Disclaimer -->
+    <div style="text-align: center; background: #0b1a2a; color: #8bb1d4; padding: 10px; font-size: 12px; border-top: 1px solid #1f3a53;">
+        Disclaimer: This system uses 100% real-time USGS data for analysis. It does NOT predict future earthquakes.
+    </div>
+</body>
+
+</html>
